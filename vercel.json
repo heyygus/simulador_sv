@@ -1,9 +1,6 @@
 {
   "redirects": [
-    {
-      "source": "/",
-      "destination": "/simulador",
-      "permanent": false
-    }
+    { "source": "/", "destination": "/simulador.html", "permanent": false },
+    { "source": "/simulador", "destination": "/simulador.html", "permanent": false }
   ]
 }
