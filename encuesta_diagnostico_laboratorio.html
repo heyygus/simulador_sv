@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Encuesta de Diagnóstico — Lab. Convertidores Eléctricos</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F6F2; --surface: #FFFFFF; --surface2: #F0EEE9;
+    --border: rgba(0,0,0,0.09); --border-strong: rgba(0,0,0,0.18);
+    --text: #1A1916; --text-muted: #6B6A65; --text-faint: #9E9D98;
+    --accent: #1D3557; --accent2: #457B9D;
+    --red: #C0392B; --red-bg: #FDF0EE;
+    --green: #1E7A4B; --green-bg: #EDF7F2;
+    --blue: #185FA5; --blue-bg: #EAF2FB;
+    --r: 8px; --rl: 12px;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
+
+  .cover { background: var(--accent); color: #fff; padding: 2.5rem 3rem 2rem; }
+  .cover-eyebrow { font-size: 11px; font-family: 'DM Mono', monospace; letter-spacing: 0.12em; color: rgba(255,255,255,0.5); text-transform: uppercase; margin-bottom: 10px; }
+  .cover-title { font-size: 26px; font-weight: 600; line-height: 1.2; margin-bottom: 6px; }
+  .cover-sub { font-size: 13px; color: rgba(255,255,255,0.65); margin-bottom: 1.5rem; }
+  .cover-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.15); }
+  .meta-field { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 3px; font-family: 'DM Mono', monospace; }
+  .meta-line { border-bottom: 1px solid rgba(255,255,255,0.25); height: 24px; }
+  .cover-note { margin-top: 1.25rem; font-size: 12px; color: rgba(255,255,255,0.5); line-height: 1.6; max-width: 640px; }
+
+  .page { max-width: 820px; margin: 0 auto; padding: 2rem 2rem 3rem; }
+
+  .progress-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; margin-bottom: 5px; }
+  .progress-bar { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 1.75rem; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; width: 0%; }
+
+  .score-panel { display: none; background: var(--accent); color: #fff; border-radius: var(--rl); padding: 2rem; margin-bottom: 2rem; text-align: center; }
+  .score-panel.show { display: block; }
+  .score-big { font-size: 52px; font-weight: 600; font-family: 'DM Mono', monospace; line-height: 1; margin-bottom: 6px; }
+  .score-label { font-size: 14px; color: rgba(255,255,255,0.65); margin-bottom: 1.5rem; }
+  .score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 400px; margin: 0 auto 1.25rem; }
+  .score-cell { background: rgba(255,255,255,0.08); border-radius: var(--r); padding: 10px 8px; }
+  .score-cell-val { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; }
+  .score-cell-lbl { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 3px; }
+  .score-breakdown { font-size: 11.5px; color: rgba(255,255,255,0.5); line-height: 1.8; }
+
+  .section-wrap { margin-bottom: 2.25rem; }
+  .section-head { display: flex; align-items: center; gap: 12px; background: var(--accent); color: #fff; padding: 8px 16px; border-radius: var(--r); margin-bottom: 1rem; }
+  .section-num { font-family: 'DM Mono', monospace; font-size: 11px; color: rgba(255,255,255,0.5); flex-shrink: 0; }
+  .section-title { font-size: 13px; font-weight: 500; letter-spacing: 0.04em; }
+  .section-count { margin-left: auto; font-size: 11px; font-family: 'DM Mono', monospace; color: rgba(255,255,255,0.45); }
+
+  .q-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--rl); padding: 1.1rem 1.4rem; margin-bottom: 10px; page-break-inside: avoid; }
+  .q-row { display: flex; gap: 10px; align-items: flex-start; }
+  .q-num { flex-shrink: 0; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); margin-top: 2px; min-width: 24px; }
+  .q-body { flex: 1; }
+  .q-tag { display: inline-block; font-size: 10px; font-family: 'DM Mono', monospace; padding: 2px 8px; border-radius: 20px; margin-bottom: 8px; font-weight: 500; }
+  .tag-seg { background: #EAF2FB; color: #185FA5; }
+  .tag-mul { background: #FDF6EC; color: #B7670A; }
+  .tag-pot { background: #EDF7F2; color: #1E7A4B; }
+  .tag-seq { background: #F3F0FB; color: #5B4CC4; }
+  .tag-cir { background: #FDF0EE; color: #C0392B; }
+  .tag-nor { background: #F0EEE9; color: #5F5E5A; }
+  .q-text { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 10px; line-height: 1.5; }
+
+  .options { display: flex; flex-direction: column; gap: 7px; }
+  .opt { display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--r); cursor: pointer; transition: border-color 0.12s, background 0.12s; }
+  .opt:hover { border-color: var(--accent2); background: var(--blue-bg); }
+  .opt.selected { border-color: var(--accent); background: var(--blue-bg); }
+  .opt.correct { border-color: var(--green); background: var(--green-bg); }
+  .opt.wrong { border-color: var(--red); background: var(--red-bg); }
+  .opt-letter { flex-shrink: 0; width: 22px; height: 22px; border: 1px solid var(--border-strong); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 500; color: var(--text-muted); background: var(--surface2); margin-top: 1px; }
+  .opt.selected .opt-letter { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .opt.correct .opt-letter { background: var(--green); color: #fff; border-color: var(--green); }
+  .opt.wrong .opt-letter { background: var(--red); color: #fff; border-color: var(--red); }
+  .opt-text { font-size: 13px; color: var(--text); line-height: 1.45; flex: 1; margin-top: 2px; }
+
+  .feedback { display: none; margin-top: 10px; padding: 8px 12px; border-radius: var(--r); font-size: 12.5px; line-height: 1.55; border-left: 3px solid transparent; }
+  .feedback.show { display: block; }
+  .feedback.fb-ok { background: var(--green-bg); border-color: var(--green); color: #154D2E; }
+  .feedback.fb-err { background: var(--red-bg); border-color: var(--red); color: #7B2318; }
+
+  .controls { display: flex; gap: 10px; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap; }
+  .btn { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; padding: 9px 22px; border-radius: 20px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #152843; }
+
+  .footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; max-width: 820px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; }
+
+  @media print {
+    body { background: #fff; }
+    .cover, .section-head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .controls, .progress-bar, .progress-row, .score-panel, .feedback { display: none !important; }
+    .opt { border: 1px solid #ccc !important; background: #fff !important; }
+    .opt-letter { border: 1px solid #bbb !important; background: #f5f5f5 !important; color: #555 !important; }
+    .q-card { border: 1px solid #ddd; }
+    .page { padding: 1rem; }
+  }
+  @media (max-width: 600px) {
+    .cover { padding: 1.5rem; }
+    .page { padding: 1rem; }
+    .cover-meta { grid-template-columns: 1fr 1fr; }
+    .score-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-eyebrow">UNEXPO · Servicio Comunitario · Dpto. Ingeniería de Sistemas</div>
+  <div class="cover-title">Encuesta de diagnóstico</div>
+  <div class="cover-sub">Laboratorio de Convertidores Eléctricos · Código 41151 · Ing. Adrián Castillo M.</div>
+  <div class="cover-meta">
+    <div><div class="meta-field">Nombre y apellido</div><div class="meta-line"></div></div>
+    <div><div class="meta-field">Cédula de identidad</div><div class="meta-line"></div></div>
+    <div><div class="meta-field">Sección / grupo</div><div class="meta-line"></div></div>
+    <div><div class="meta-field">Fecha</div><div class="meta-line"></div></div>
+  </div>
+  <div class="cover-note">Encuesta de carácter diagnóstico y formativo. No hay penalización por error — responde con honestidad lo que conoces actualmente. Los resultados serán usados para mejorar los materiales de apoyo del laboratorio.</div>
+</div>
+
+<div class="page">
+
+  <div class="score-panel" id="scorePanel">
+    <div class="score-big" id="scorePct">—</div>
+    <div class="score-label">Resultado diagnóstico — 20 preguntas</div>
+    <div class="score-grid">
+      <div class="score-cell"><div class="score-cell-val" id="scoreCorr">—</div><div class="score-cell-lbl">Correctas</div></div>
+      <div class="score-cell"><div class="score-cell-val" id="scoreWrong">—</div><div class="score-cell-lbl">Incorrectas</div></div>
+      <div class="score-cell"><div class="score-cell-val">20</div><div class="score-cell-lbl">Total</div></div>
+    </div>
+    <div class="score-breakdown" id="scoreBreakdown"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" onclick="submitAll()">Verificar todas las respuestas</button>
+    <button class="btn" onclick="resetAll()">Reiniciar</button>
+  </div>
+  <div class="progress-row">
+    <span id="progressLabel">0 / 20 respondidas</span>
+    <span id="progressPct">0%</span>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- S1 SEGURIDAD -->
+  <div class="section-wrap">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <span class="section-title">Seguridad y protocolos del banco de pruebas</span>
+      <span class="section-count">4 preguntas</span>
+    </div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">01</div><div class="q-body">
+      <div class="q-tag tag-seg">seguridad</div>
+      <div class="q-text">Antes de realizar cualquier conexión en el banco de pruebas, ¿cuál es el primer paso obligatorio?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Revisar el esquema del circuito en la guía de laboratorio</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Verificar que el banco esté completamente desenergizado y la perilla de voltaje en cero</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Conectar los instrumentos de medición al circuito</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Identificar los componentes que se van a utilizar</div></div>
+      </div>
+      <div class="feedback" id="fb-1">La verificación de que el banco está desenergizado y la perilla en cero es siempre el primer paso, sin excepción. Conectar con tensión presente puede provocar arcos eléctricos y daños en equipos o personas.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">02</div><div class="q-body">
+      <div class="q-tag tag-seg">seguridad</div>
+      <div class="q-text">Durante una práctica necesitas cambiar una conexión a mitad del ensayo. ¿Cuál es el único procedimiento aceptable?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Hacer el cambio rápidamente mientras el circuito está energizado para no perder tiempo</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Bajar el voltaje a la mitad y luego realizar el cambio</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Reducir el voltaje a cero, abrir el interruptor principal y luego realizar el cambio</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Avisar al compañero que va a hacer el cambio y proceder inmediatamente</div></div>
+      </div>
+      <div class="feedback" id="fb-2">El único procedimiento aceptable es: voltaje a 0 → abrir interruptor → realizar el cambio. No existe ninguna excepción válida para trabajar con tensión presente al manipular conexiones.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">03</div><div class="q-body">
+      <div class="q-tag tag-seg">seguridad</div>
+      <div class="q-text">Al finalizar completamente una práctica, ¿cuál es la secuencia de apagado correcta?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Desconectar los cables primero y luego apagar el interruptor principal</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Reducir voltaje a cero → apagar interruptor principal → colocar selector en cero → desmontar cables</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Apagar el interruptor principal y desmontar dejando el selector en el valor utilizado</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Apagar el interruptor y alejarse del banco sin desmontar</div></div>
+      </div>
+      <div class="feedback" id="fb-3">Secuencia completa obligatoria: (1) voltaje a 0, (2) abrir interruptor, (3) selector a posición cero, (4) desmontar. Dejar el selector en un valor distinto de cero es un riesgo para quien use el banco a continuación.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">04</div><div class="q-body">
+      <div class="q-tag tag-seg">seguridad</div>
+      <div class="q-text">Durante el ensayo notas que un cable de conexión se calienta de forma excesiva. ¿Qué haces?</div>
+      <div class="options" data-correct="a">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Detener la práctica, des-energizar el banco y reportar el cable como defectuoso</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Reducir la carga un poco y continuar para terminar las mediciones</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Ignorarlo porque es normal que los cables se calienten en el laboratorio</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Envolver el cable caliente con cinta aislante y continuar la práctica</div></div>
+      </div>
+      <div class="feedback" id="fb-4">El calentamiento excesivo indica sobrecorriente o defecto en el aislante. Continuar puede provocar un cortocircuito o incendio. La única acción correcta es detener, des-energizar y reportar inmediatamente.</div>
+    </div></div></div>
+  </div>
+
+  <!-- S2 MULTÍMETRO -->
+  <div class="section-wrap">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <span class="section-title">Uso correcto del multímetro</span>
+      <span class="section-count">4 preguntas</span>
+    </div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">05</div><div class="q-body">
+      <div class="q-tag tag-mul">multímetro</div>
+      <div class="q-text">¿En qué escala debe estar el multímetro y cómo se conecta para medir corriente alterna en un circuito?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Escala de voltaje AC, conectado en paralelo con el elemento</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Escala de corriente AC, en serie — el circuito debe abrirse e insertarse el instrumento</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Escala de corriente AC, conectado en paralelo con el elemento</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Escala de resistencia, en serie con el elemento</div></div>
+      </div>
+      <div class="feedback" id="fb-5">El amperímetro SIEMPRE va en serie — el circuito debe abrirse e insertarse el instrumento en el camino de la corriente. Conectarlo en paralelo equivale a un cortocircuito y destruye el instrumento al instante.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">06</div><div class="q-body">
+      <div class="q-tag tag-mul">multímetro</div>
+      <div class="q-text">El multímetro está en escala de corriente (A) y se conecta en paralelo con un componente para medir voltaje. ¿Qué ocurre?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Lee un voltaje incorrecto pero sin riesgo para el instrumento</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">El instrumento muestra error en pantalla y se apaga automáticamente</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Se genera un cortocircuito a través del instrumento, quemando el fusible interno o destruyendo el multímetro</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">No ocurre nada si el voltaje es menor a 100 V</div></div>
+      </div>
+      <div class="feedback" id="fb-6">En escala de corriente, la resistencia interna del multímetro es casi cero. Conectarlo en paralelo crea un cortocircuito: toda la corriente disponible fluye por el instrumento, quemando el fusible o destruyendo el circuito interno. Es el error más costoso y frecuente del laboratorio.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">07</div><div class="q-body">
+      <div class="q-tag tag-mul">multímetro</div>
+      <div class="q-text">¿Cómo seleccionas la escala del multímetro cuando no conoces el valor aproximado de la magnitud a medir?</div>
+      <div class="options" data-correct="a">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Comenzar con la escala más alta y reducirla progresivamente hasta obtener lectura precisa</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Comenzar con la escala más baja para mayor precisión desde el inicio</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Usar siempre la escala automática (AUTO) sin importar el tipo de medición</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Estimar el valor y elegir la escala basándose directamente en esa estimación</div></div>
+      </div>
+      <div class="feedback" id="fb-7">Siempre de mayor a menor: comenzar en la escala más alta protege el instrumento. Empezar en escala baja con un valor desconocido puede quemar el fusible del multímetro o dañar el medidor analógico permanentemente.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">08</div><div class="q-body">
+      <div class="q-tag tag-mul">multímetro</div>
+      <div class="q-text">¿Para qué sirve la función de continuidad (símbolo de bocina) del multímetro en el laboratorio?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Para medir el voltaje de salida de una fuente DC</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Para verificar si un componente está correctamente dimensionado para la práctica</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Para verificar si existe trayectoria conductora entre dos puntos: útil para comprobar cables, fusibles y conexiones antes de energizar</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Para medir la frecuencia de la señal en un circuito AC</div></div>
+      </div>
+      <div class="feedback" id="fb-8">La prueba de continuidad es la verificación técnica correcta para cables — emite señal sonora si hay camino conductor. Reemplaza la inspección visual con una comprobación instrumental real antes de usar cualquier cable o puente.</div>
+    </div></div></div>
+  </div>
+
+  <!-- S3 COMPONENTES -->
+  <div class="section-wrap">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <span class="section-title">Identificación de componentes y capacidad de potencia</span>
+      <span class="section-count">3 preguntas</span>
+    </div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">09</div><div class="q-body">
+      <div class="q-tag tag-pot">componentes</div>
+      <div class="q-text">Una resistencia de 100 Ω / 5 W está conectada a una fuente de 30 V. ¿Puede operarse de forma segura?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Sí, porque el valor resistivo (100 Ω) es el correcto para el circuito</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">No, porque la potencia disipada sería 9 W, superando la capacidad nominal de 5 W</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Sí, siempre que la corriente no supere 1 A</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Depende del fabricante de la resistencia</div></div>
+      </div>
+      <div class="feedback" id="fb-9">P = V²/R = 30²/100 = 9 W. La resistencia solo soporta 5 W — operarla así la sobrecalentará hasta quemarla. El valor resistivo no es suficiente: siempre hay que verificar la capacidad de potencia (wattaje nominal).</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">10</div><div class="q-body">
+      <div class="q-tag tag-pot">componentes</div>
+      <div class="q-text">La etiqueta de un capacitor indica: 47 μF / 50 V. ¿Qué representa el "50 V"?</div>
+      <div class="options" data-correct="a">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">El voltaje máximo de trabajo; superarlo puede romper el dieléctrico y destruir el capacitor</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">El voltaje mínimo necesario para que el capacitor funcione correctamente</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">El voltaje de prueba en fábrica; en uso normal puede superarse</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Una referencia del fabricante sin implicación directa en el circuito</div></div>
+      </div>
+      <div class="feedback" id="fb-10">El voltaje indicado es el voltaje de trabajo máximo. Superarlo provoca la ruptura del dieléctrico — en capacitores electrolíticos puede ser una falla explosiva. Siempre operar por debajo de este límite.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">11</div><div class="q-body">
+      <div class="q-tag tag-pot">componentes</div>
+      <div class="q-text">El transformador del laboratorio tiene en placa: 220 V / 24 V · 41 A. ¿Cuál es su potencia aparente nominal en el secundario?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">220 VA</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">984 VA</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">4820 VA</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">41 VA</div></div>
+      </div>
+      <div class="feedback" id="fb-11">S = V × I = 24 V × 41 A = 984 VA. Este valor determina los límites de carga que puede alimentar el transformador sin superar su temperatura nominal de operación.</div>
+    </div></div></div>
+  </div>
+
+  <!-- S4 SECUENCIAS -->
+  <div class="section-wrap">
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <span class="section-title">Secuencias de encendido y apagado</span>
+      <span class="section-count">3 preguntas</span>
+    </div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">12</div><div class="q-body">
+      <div class="q-tag tag-seq">secuencias</div>
+      <div class="q-text">Para encender el banco al inicio de una práctica, ¿cuál es el orden correcto?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Activar contactor → subir voltaje → verificar conexiones → cerrar interruptor</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Cerrar interruptor → activar contactor → verificar conexiones → subir voltaje</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Verificar perilla en 0 → revisar conexiones del circuito → cerrar interruptor → activar contactor → subir voltaje gradualmente</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Revisar conexiones → subir voltaje → cerrar interruptor → activar contactor</div></div>
+      </div>
+      <div class="feedback" id="fb-12">El orden correcto garantiza que nunca haya tensión durante la configuración: perilla en 0 → revisar circuito → cerrar interruptor → activar contactor → incrementar voltaje gradualmente vigilando el amperímetro.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">13</div><div class="q-body">
+      <div class="q-tag tag-seq">secuencias</div>
+      <div class="q-text">En el arranque de un motor de inducción trifásico, ¿por qué se sube el voltaje gradualmente en lugar de aplicar el nominal de inmediato?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Para que el motor identifique la frecuencia de red y se sincronice antes de alcanzar velocidad nominal</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Para limitar la corriente de arranque, que puede ser 5 a 7 veces la nominal y superar el límite de 3.5 A del banco</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Para verificar visualmente que el motor gira en el sentido correcto antes de alcanzar velocidad nominal</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Porque la guía de laboratorio lo indica así, sin razón técnica específica</div></div>
+      </div>
+      <div class="feedback" id="fb-13">La corriente de arranque de un motor de inducción puede ser 5-7 veces la nominal. El banco tiene un límite de 3.5 A — aplicar tensión nominal directamente puede disparar el breaker o dañar los equipos del banco.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">14</div><div class="q-body">
+      <div class="q-tag tag-seq">secuencias</div>
+      <div class="q-text">¿Qué ocurre si un motor DC shunt opera con el circuito de campo abierto (sin corriente de excitación)?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">El motor no arranca porque no tiene flujo magnético para generar torque</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">El motor opera normalmente con velocidad ligeramente reducida</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">El motor se embala: alcanza velocidades excesivas que pueden destruir mecánicamente el rotor</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">La corriente de armadura sube pero la velocidad permanece constante</div></div>
+      </div>
+      <div class="feedback" id="fb-14">Sin flujo de campo, la fuerza contraelectromotriz es mínima y la velocidad sube sin límite (embalamiento). Las fuerzas centrífugas pueden destruir mecánicamente el rotor. La excitación de campo nunca debe interrumpirse durante la operación de un motor DC shunt.</div>
+    </div></div></div>
+  </div>
+
+  <!-- S5 CIRCUITOS -->
+  <div class="section-wrap">
+    <div class="section-head">
+      <span class="section-num">05</span>
+      <span class="section-title">Lectura e interpretación de circuitos</span>
+      <span class="section-count">3 preguntas</span>
+    </div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">15</div><div class="q-body">
+      <div class="q-tag tag-cir">circuitos</div>
+      <div class="q-text">En el diagrama de la Práctica #1, los elementos -jXc y jXL representan respectivamente:</div>
+      <div class="options" data-correct="a">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Reactancia capacitiva (capacitor) y reactancia inductiva (bobina), expresadas como números complejos</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Resistencias variables con valores negativos y positivos respectivamente</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Fuentes de tensión dependiente en el circuito</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Valores de corriente continua superpuesta al circuito AC</div></div>
+      </div>
+      <div class="feedback" id="fb-15">-jXc = 1/(ωC), reactancia capacitiva con desfase de -90° entre V e I. jXL = ωL, reactancia inductiva con desfase de +90°. Ambas son impedancias puramente reactivas: no consumen potencia activa pero sí afectan el factor de potencia.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">16</div><div class="q-body">
+      <div class="q-tag tag-cir">circuitos</div>
+      <div class="q-text">En un sistema trifásico con conexión estrella (Y), ¿cuál es la relación entre el voltaje de línea (VL) y el voltaje de fase (Vf)?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">VL = Vf (son iguales en conexión estrella)</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">VL = 3 · Vf</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">VL = √3 · Vf (aproximadamente 1.732 veces el voltaje de fase)</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">VL = Vf / √3</div></div>
+      </div>
+      <div class="feedback" id="fb-16">En estrella: VL = √3 · Vf ≈ 1.732 · Vf. Ejemplo: 220 V de línea → Vf = 220/√3 ≈ 127 V. En delta: VL = Vf. Relación fundamental para las Prácticas #2 y #5 de la guía.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">17</div><div class="q-body">
+      <div class="q-tag tag-cir">circuitos</div>
+      <div class="q-text">¿Qué indica el triángulo de potencias y cuáles son sus tres lados?</div>
+      <div class="options" data-correct="a">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">S (aparente en VA, hipotenusa), P (activa en W, adyacente) y Q (reactiva en VAR, opuesto), donde S² = P² + Q²</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Representa las tres fases del sistema trifásico y sus voltajes asociados</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Muestra la relación entre voltaje, corriente y resistencia según la Ley de Ohm</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Es una herramienta exclusiva para calcular la impedancia total de circuitos RLC en serie</div></div>
+      </div>
+      <div class="feedback" id="fb-17">S (VA) = hipotenusa; P (W, hace trabajo real) = lado adyacente; Q (VAR, potencia reactiva) = lado opuesto. Factor de potencia = cos(θ) = P/S. Se aplica en las Prácticas #1 y #2 para el balance de energía.</div>
+    </div></div></div>
+  </div>
+
+  <!-- S6 NORMATIVA -->
+  <div class="section-wrap">
+    <div class="section-head">
+      <span class="section-num">06</span>
+      <span class="section-title">Normas eléctricas básicas (NEC / COVENIN)</span>
+      <span class="section-count">3 preguntas</span>
+    </div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">18</div><div class="q-body">
+      <div class="q-tag tag-nor">normativa</div>
+      <div class="q-text">El código de colores COVENIN para conductores en instalaciones trifásicas en Venezuela establece:</div>
+      <div class="options" data-correct="a">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Fase R: negro / Fase S: azul / Fase T: rojo / Neutro: blanco o gris / Tierra: verde o verde-amarillo</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Fase R: rojo / Fase S: amarillo / Fase T: azul / Neutro: negro / Tierra: verde</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Todos los conductores de fase en rojo; neutro en blanco; tierra en verde-amarillo</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">El color es libre; solo importa la etiqueta en el borne de conexión</div></div>
+      </div>
+      <div class="feedback" id="fb-18">Norma COVENIN 200: fase R = negro, S = azul, T = rojo, neutro = blanco/gris, tierra de protección = verde o verde-amarillo. Identificar correctamente los conductores es crítico antes de conectar cualquier circuito trifásico.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">19</div><div class="q-body">
+      <div class="q-tag tag-nor">normativa</div>
+      <div class="q-text">¿Cuál es el propósito del conductor de tierra de protección en los equipos del laboratorio?</div>
+      <div class="options" data-correct="c">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">Mejorar la eficiencia del equipo reduciendo pérdidas por efecto Joule</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Proporcionar el camino de retorno de la corriente de trabajo del circuito</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Proteger a las personas: si hay falla a la carcasa, la corriente fluye por tierra y dispara el protector en lugar de pasar por el cuerpo humano</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Reducir el ruido eléctrico en las mediciones de los instrumentos</div></div>
+      </div>
+      <div class="feedback" id="fb-19">La tierra de protección es el principal mecanismo de seguridad personal. Al conectar la carcasa a tierra, una falla que la energice crea un camino de baja impedancia que dispara el breaker antes de que una persona reciba una descarga letal.</div>
+    </div></div></div>
+
+    <div class="q-card"><div class="q-row"><div class="q-num">20</div><div class="q-body">
+      <div class="q-tag tag-nor">normativa</div>
+      <div class="q-text">¿Qué implica trabajar cerca de partes activas energizadas en el laboratorio de baja tensión (hasta 220 V AC)?</div>
+      <div class="options" data-correct="b">
+        <div class="opt" data-val="a"><div class="opt-letter">A</div><div class="opt-text">No implica riesgos especiales porque 220 V se considera baja tensión</div></div>
+        <div class="opt" data-val="b"><div class="opt-letter">B</div><div class="opt-text">Implica no acercar miembros del cuerpo a terminales expuestos, mantener el área despejada y no trabajar solo</div></div>
+        <div class="opt" data-val="c"><div class="opt-letter">C</div><div class="opt-text">Solo aplica precauciones adicionales si el voltaje supera los 600 V AC</div></div>
+        <div class="opt" data-val="d"><div class="opt-letter">D</div><div class="opt-text">Es suficiente con usar guantes de látex de uso doméstico como protección</div></div>
+      </div>
+      <div class="feedback" id="fb-20">Los 220 V AC son potencialmente letales: la corriente que pasa por el cuerpo humano a ese voltaje puede producir fibrilación ventricular. Las normas de seguridad eléctrica aplican desde cualquier tensión que represente riesgo, incluyendo 24 V DC en circuitos de alta corriente.</div>
+    </div></div></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn btn-primary" onclick="submitAll()">Verificar todas las respuestas</button>
+    <button class="btn" onclick="resetAll()">Reiniciar encuesta</button>
+  </div>
+
+</div>
+
+<div class="footer">
+  <span>UNEXPO · Servicio Comunitario · Lab. Convertidores Eléctricos</span>
+  <span>20 preguntas · 6 secciones · Diagnóstico formativo</span>
+</div>
+
+<script>
+  var answers = {}, submitted = false, TOTAL = 20;
+  var correct = {1:'b',2:'c',3:'b',4:'a',5:'b',6:'c',7:'a',8:'c',9:'b',10:'a',11:'b',12:'c',13:'b',14:'c',15:'a',16:'c',17:'a',18:'a',19:'c',20:'b'};
+  var sections = {1:'Seguridad',2:'Seguridad',3:'Seguridad',4:'Seguridad',5:'Multímetro',6:'Multímetro',7:'Multímetro',8:'Multímetro',9:'Componentes',10:'Componentes',11:'Componentes',12:'Secuencias',13:'Secuencias',14:'Secuencias',15:'Circuitos',16:'Circuitos',17:'Circuitos',18:'Normativa',19:'Normativa',20:'Normativa'};
+
+  document.querySelectorAll('.opt').forEach(function(opt) {
+    opt.addEventListener('click', function() {
+      if (submitted) return;
+      var num = parseInt(opt.closest('.q-card').querySelector('.q-num').textContent.trim());
+      opt.closest('.options').querySelectorAll('.opt').forEach(function(o){ o.classList.remove('selected'); });
+      opt.classList.add('selected');
+      answers[num] = opt.dataset.val;
+      var a = Object.keys(answers).length, pct = Math.round(a/TOTAL*100);
+      document.getElementById('progressLabel').textContent = a + ' / ' + TOTAL + ' respondidas';
+      document.getElementById('progressPct').textContent = pct + '%';
+      document.getElementById('progressFill').style.width = pct + '%';
+    });
+  });
+
+  function submitAll() {
+    submitted = true;
+    var tot = 0, sec = {};
+    document.querySelectorAll('.q-card').forEach(function(card) {
+      var num = parseInt(card.querySelector('.q-num').textContent.trim());
+      var ua = answers[num], ca = correct[num], s = sections[num], fb = document.getElementById('fb-'+num);
+      if (!sec[s]) sec[s] = {c:0,t:0};
+      sec[s].t++;
+      card.querySelectorAll('.opt').forEach(function(o){
+        o.classList.remove('selected');
+        if (o.dataset.val===ca) o.classList.add('correct');
+        else if (o.dataset.val===ua && ua!==ca) o.classList.add('wrong');
+      });
+      if (fb) { fb.classList.add('show'); fb.classList.add(ua===ca?'fb-ok':'fb-err'); }
+      if (ua===ca) { tot++; sec[s].c++; }
+    });
+    var pct = Math.round(tot/TOTAL*100);
+    document.getElementById('scorePct').textContent = pct+'%';
+    document.getElementById('scoreCorr').textContent = tot;
+    document.getElementById('scoreWrong').textContent = TOTAL-tot;
+    document.getElementById('scoreBreakdown').textContent = Object.keys(sec).map(function(s){ return s+': '+sec[s].c+'/'+sec[s].t; }).join('  ·  ');
+    var p = document.getElementById('scorePanel');
+    p.classList.add('show');
+    p.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function resetAll() {
+    submitted = false; answers = {};
+    document.querySelectorAll('.opt').forEach(function(o){ o.classList.remove('selected','correct','wrong'); });
+    document.querySelectorAll('.feedback').forEach(function(f){ f.classList.remove('show','fb-ok','fb-err'); });
+    document.getElementById('scorePanel').classList.remove('show');
+    document.getElementById('progressLabel').textContent = '0 / 20 respondidas';
+    document.getElementById('progressPct').textContent = '0%';
+    document.getElementById('progressFill').style.width = '0%';
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
+</script>
+</body>
+</html>

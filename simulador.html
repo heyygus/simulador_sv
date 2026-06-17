@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimLab · Laboratorio de Convertidores Eléctricos</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --green: #3fb950;
+  --green-dim: #122a1a;
+  --amber: #d29922;
+  --amber-dim: #2a1f00;
+  --red: #f85149;
+  --red-dim: #2a0a09;
+  --blue: #58a6ff;
+  --blue-dim: #0c1e40;
+  --wire: #3fb950;
+  --wire-live: #ff9f43;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+
+/* ── LANDING ── */
+#landing{max-width:980px;margin:0 auto;padding:2rem 1.25rem}
+.hdr{text-align:center;margin-bottom:2.5rem;padding-top:1rem}
+.hdr h1{font-size:2rem;font-weight:700;background:linear-gradient(135deg,var(--blue),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hdr p{color:var(--muted);margin-top:.4rem;font-size:.95rem}
+.hdr small{display:block;margin-top:.25rem;color:var(--muted);font-size:.8rem}
+
+.progress-row{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.85rem 1.25rem}
+.progress-row span{font-size:.85rem;color:var(--muted);white-space:nowrap}
+.pbar{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:3px;transition:width .5s ease}
+.pscore{font-size:.9rem;font-weight:600;color:var(--green);white-space:nowrap}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.4rem;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.card:hover{border-color:var(--blue);transform:translateY(-2px);box-shadow:0 8px 24px rgba(88,166,255,.12)}
+.card.done{border-color:var(--green)}
+.card.done::after{content:'✓';position:absolute;top:.9rem;right:.9rem;color:var(--green);font-size:1.1rem;font-weight:700}
+.badge{display:inline-block;padding:.2rem .55rem;border-radius:20px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.7rem}
+.b-red{background:var(--red-dim);color:var(--red)}
+.b-amber{background:var(--amber-dim);color:var(--amber)}
+.b-blue{background:var(--blue-dim);color:var(--blue)}
+.card-num{font-size:.75rem;color:var(--muted);margin-bottom:.2rem}
+.card h3{font-size:1rem;margin-bottom:.4rem}
+.card p{font-size:.83rem;color:var(--muted);line-height:1.5}
+
+/* ── SIM SCREEN ── */
+#sim{display:none;max-width:1100px;margin:0 auto;padding:1.5rem 1.25rem}
+.sim-hdr{display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap}
+.back-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.45rem .9rem;border-radius:7px;cursor:pointer;font-size:.88rem;transition:background .15s}
+.back-btn:hover{background:var(--border)}
+.sim-title{font-size:1.25rem;font-weight:600}
+.sim-badge{padding:.2rem .55rem;border-radius:20px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+
+.sim-body{display:grid;grid-template-columns:1fr 320px;gap:1.25rem;align-items:start}
+
+.circuit-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;min-height:380px;position:relative}
+.circuit-wrap svg{display:block;width:100%;height:auto}
+
+.ctrl-col{display:flex;flex-direction:column;gap:.9rem}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.1rem}
+.box-lbl{font-size:.75rem;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.65rem;font-weight:600}
+.box p{font-size:.88rem;line-height:1.6}
+
+.steps{list-style:none;display:flex;flex-direction:column;gap:.35rem}
+.steps li{display:flex;align-items:flex-start;gap:.55rem;font-size:.85rem;color:var(--muted)}
+.steps li.active{color:var(--text)}
+.steps li.done{color:var(--green)}
+.dot{width:20px;height:20px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.62rem;flex-shrink:0;margin-top:1px}
+.steps li.active .dot{border-color:var(--blue);background:var(--blue-dim);color:var(--blue)}
+.steps li.done .dot{border-color:var(--green);background:var(--green-dim);color:var(--green)}
+
+.opt-list{display:flex;flex-direction:column;gap:.45rem}
+.opt{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.65rem .9rem;border-radius:8px;cursor:pointer;font-size:.875rem;text-align:left;transition:all .15s;display:flex;align-items:center;gap:.55rem}
+.opt:hover:not(:disabled){border-color:var(--blue);background:var(--blue-dim)}
+.opt.correct{border-color:var(--green)!important;background:var(--green-dim)!important;color:var(--green)!important}
+.opt.wrong{border-color:var(--red)!important;background:var(--red-dim)!important;color:var(--red)!important;animation:shake .4s}
+.opt:disabled{opacity:.45;cursor:default}
+.opt-key{width:22px;height:22px;border-radius:5px;background:var(--surface);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;color:var(--muted);transition:all .15s}
+.opt:hover:not(:disabled) .opt-key{border-color:var(--blue);color:var(--blue)}
+.opt.correct .opt-key{border-color:var(--green);color:var(--green);background:var(--green-dim)}
+.opt.wrong .opt-key{border-color:var(--red);color:var(--red);background:var(--red-dim)}
+.dial-zone{cursor:pointer}
+.dial-zone circle{transition:fill .2s,stroke .2s}
+.dial-zone:hover circle{filter:brightness(1.4)}
+.dial-hint{font-size:.83rem;color:var(--muted);line-height:1.6;padding:.3rem 0}
+.conn-msg{font-size:.85rem;line-height:1.55;color:var(--text)}
+.conn-counter{font-size:1.2rem;font-weight:700;color:var(--amber);display:block;margin:.3rem 0}
+.stage-ctx{font-size:.82rem;color:var(--muted);line-height:1.6;border-left:2px solid var(--border);padding:.35rem 0 .35rem .7rem;margin-bottom:.65rem;background:transparent}
+.stage-q{font-size:.9rem;color:var(--text);font-weight:600;line-height:1.5;margin-bottom:.65rem;padding-bottom:.55rem;border-bottom:1px solid var(--border)}
+
+.fb{border-radius:9px;padding:.85rem 1rem;font-size:.85rem;line-height:1.55;display:none;margin-top:.1rem}
+.fb.show{display:block}
+.fb.err{background:var(--red-dim);border:1px solid #5a1a18;color:#ffb3b0}
+.fb.ok{background:var(--green-dim);border:1px solid #1c5c2e;color:#a8f0b8}
+.fb.warn{background:var(--amber-dim);border:1px solid #5a3a00;color:#ffd980}
+.fb strong{display:block;margin-bottom:.3rem}
+
+.next-btn{background:linear-gradient(135deg,var(--blue),var(--green));border:none;color:#fff;padding:.7rem 1.2rem;border-radius:8px;cursor:pointer;font-size:.9rem;font-weight:600;width:100%;display:none;transition:opacity .15s;margin-top:.1rem}
+.next-btn:hover{opacity:.88}
+.next-btn.show{display:block}
+
+/* ── Slider ── */
+.slider-wrap{display:flex;flex-direction:column;gap:.4rem}
+.slider-wrap label{font-size:.83rem;color:var(--muted)}
+.slider-wrap input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer}
+.meter-row{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:.6rem .85rem;font-family:'Courier New',monospace}
+.meter-val{font-size:1.3rem;font-weight:700;color:var(--green)}
+.meter-val.danger{color:var(--red);animation:flash .4s infinite}
+.meter-unit{font-size:.82rem;color:var(--muted)}
+.safe-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin-top:.3rem}
+.safe-fill{height:100%;background:var(--green);border-radius:3px;transition:width .2s,background .2s}
+.safe-fill.over{background:var(--red)}
+
+/* ── Connector dots (S4) ── */
+.conn{cursor:pointer}
+.conn circle{transition:fill .2s,stroke .2s}
+.conn:hover circle{stroke:var(--blue)!important;stroke-width:3!important}
+.conn.loose circle{fill:var(--amber)!important;stroke:var(--amber)!important}
+.conn.loose{animation:flicker .6s ease infinite}
+.conn.fixed circle{fill:var(--green)!important;stroke:var(--green)!important}
+.conn.inspected circle{fill:var(--muted)!important;stroke:var(--muted)!important}
+
+/* ── SVG elements ── */
+.w{stroke:var(--wire);stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.w-live{stroke:var(--wire-live);stroke-width:2.5;fill:none}
+.w-fault{stroke:var(--red);stroke-width:3.5;fill:none;stroke-dasharray:6 3}
+.comp{stroke:var(--muted);stroke-width:2;fill:var(--surface)}
+.comp-fill{fill:#1a2233;stroke:var(--muted);stroke-width:2}
+.lbl{fill:var(--muted);font-family:'Segoe UI',sans-serif;font-size:11px;text-anchor:middle}
+.lbl-val{fill:var(--blue);font-family:'Courier New',monospace;font-size:12px;text-anchor:middle}
+.phase-R{stroke:#cc3333}
+.phase-S{stroke:#3366cc}
+.phase-T{stroke:#cc9900}
+.meter-circle{stroke:var(--blue);stroke-width:2;fill:#0c1e40}
+.meter-text{fill:var(--blue);font-family:'Segoe UI',sans-serif;font-size:13px;text-anchor:middle;font-weight:600}
+.node{fill:var(--wire);stroke:none}
+.spark{fill:var(--amber);opacity:0}
+.spark.on{animation:spark-anim .5s ease forwards}
+
+/* ── Animations ── */
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@keyframes flash{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes flicker{0%,100%{opacity:1}20%{opacity:.2}60%{opacity:.8}80%{opacity:.1}}
+@keyframes spark-anim{0%{opacity:1;transform:scale(1)}60%{opacity:.7;transform:scale(2)}100%{opacity:0;transform:scale(3)}}
+@keyframes danger-flash{0%,100%{background:var(--surface)}50%{background:#1a0505}}
+.danger-bg{animation:danger-flash .35s ease 4}
+
+/* ── COMPLETION ── */
+#completion{display:none;max-width:600px;margin:3rem auto;padding:1.25rem;text-align:center}
+.comp-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem}
+.comp-score{font-size:4rem;font-weight:700;background:linear-gradient(135deg,var(--blue),var(--green));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
+.comp-card h2{margin:1rem 0 .5rem;font-size:1.4rem}
+.comp-card p{color:var(--muted);font-size:.9rem;line-height:1.6}
+.restart-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.7rem 1.5rem;border-radius:8px;cursor:pointer;font-size:.9rem;margin-top:1.5rem;transition:background .15s}
+.restart-btn:hover{background:var(--border)}
+
+/* ── Responsive ── */
+@media(max-width:680px){
+  .sim-body{grid-template-columns:1fr}
+  .hdr h1{font-size:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LANDING ═══════════════ -->
+<div id="landing">
+  <div class="hdr">
+    <h1>SimLab · Laboratorio Eléctrico</h1>
+    <p>Simulador de errores y buenas prácticas · Convertidores Eléctricos 41151</p>
+    <small>Identifica el error, corrige el procedimiento, aprende la norma.</small>
+  </div>
+
+  <div class="progress-row">
+    <span>Progreso</span>
+    <div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
+    <span class="pscore" id="pscore">0 / 5 escenarios</span>
+  </div>
+
+  <div class="grid" id="card-grid"></div>
+</div>
+
+<!-- ═══════════════ SIM SCREEN ═══════════════ -->
+<div id="sim">
+  <div class="sim-hdr">
+    <button class="back-btn" onclick="showLanding()">← Volver</button>
+    <div class="sim-title" id="sim-title"></div>
+    <div class="sim-badge badge" id="sim-badge"></div>
+  </div>
+  <div class="sim-body">
+    <div class="circuit-wrap" id="circuit-wrap"></div>
+    <div class="ctrl-col">
+      <div class="box">
+        <div class="box-lbl">Objetivo</div>
+        <p id="obj-text"></p>
+      </div>
+      <div class="box">
+        <div class="box-lbl">Pasos</div>
+        <ul class="steps" id="steps-list"></ul>
+      </div>
+      <div class="box" id="action-box">
+        <div class="box-lbl" id="q-lbl">Etapa</div>
+        <div class="stage-ctx" id="stage-ctx"></div>
+        <div class="stage-q" id="stage-q"></div>
+        <div class="opt-list" id="opts"></div>
+        <div class="fb" id="fb"></div>
+        <button class="next-btn" id="next-btn"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ COMPLETION ═══════════════ -->
+<div id="completion">
+  <div class="comp-card">
+    <div class="comp-score" id="comp-score"></div>
+    <h2 id="comp-title"></h2>
+    <p id="comp-msg"></p>
+    <button class="restart-btn" onclick="showLanding()">← Volver al inicio</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+const state = {
+  completed: new Set(),
+  wrongAttempts: {},   // scenarioId → count
+  currentId: null,
+  currentStage: 0,
+  stageWrong: 0,       // wrong attempts in current stage
+};
+
+// ═══════════════════════════════════════════
+//  SVG HELPERS
+// ═══════════════════════════════════════════
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, text) {
+  const e = document.createElementNS(NS, tag);
+  if (attrs) Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v));
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function makeSVG(w=500, h=300) {
+  return el('svg', {viewBox:`0 0 ${w} ${h}`, xmlns:NS});
+}
+function wire(svg, x1,y1,x2,y2,cls='w') {
+  svg.appendChild(el('line', {x1,y1,x2,y2,class:cls}));
+}
+function label(svg, x, y, txt, cls='lbl') {
+  svg.appendChild(el('text', {x, y, class:cls}, txt));
+}
+function node(svg, x, y) {
+  svg.appendChild(el('circle', {cx:x, cy:y, r:4, class:'node'}));
+}
+function drawResistor(svg, x, y, id, lbl, val) {
+  // IEC box
+  const g = el('g', id ? {id} : {});
+  g.appendChild(el('rect', {x:x-28,y:y-12,width:56,height:24, class:'comp-fill',rx:3}));
+  if (lbl) {
+    const t = el('text', {x, y:y+35, class:'lbl'}, lbl);
+    g.appendChild(t);
+  }
+  if (val) {
+    const t = el('text', {x, y:y+47, class:'lbl-val'}, val);
+    g.appendChild(t);
+  }
+  svg.appendChild(g);
+}
+function drawInductor(svg, x, y, id) {
+  // series of arcs
+  const g = el('g', id ? {id} : {});
+  let d = `M ${x-30},${y}`;
+  for (let i = 0; i < 4; i++) {
+    const cx = x - 22 + i * 15;
+    d += ` A 7,7 0 0 1 ${cx + 15},${y}`;
+  }
+  g.appendChild(el('path', {d, class:'w', 'stroke-width':'2.5', fill:'none'}));
+  if (id) svg.appendChild(g); else svg.appendChild(g);
+  svg.appendChild(g);
+}
+function drawCapacitor(svg, x, y) {
+  wire(svg, x, y-25, x, y-8);
+  wire(svg, x, y+8, x, y+25);
+  svg.appendChild(el('line', {x1:x-18,y1:y-8,x2:x+18,y2:y-8,class:'comp','stroke-width':'4'}));
+  svg.appendChild(el('line', {x1:x-18,y1:y+8,x2:x+18,y2:y+8,class:'comp','stroke-width':'4'}));
+}
+function drawBattery(svg, x, y, vLabel) {
+  // Vertical battery
+  wire(svg, x, y-40, x, y-12);
+  wire(svg, x, y+12, x, y+40);
+  // long line = +
+  svg.appendChild(el('line', {x1:x-20,y1:y-12,x2:x+20,y2:y-12,class:'comp','stroke-width':'3.5'}));
+  // short line = -
+  svg.appendChild(el('line', {x1:x-12,y1:y+12,x2:x+12,y2:y+12,class:'comp','stroke-width':'2'}));
+  label(svg, x+28, y-8, '+', 'lbl');
+  label(svg, x+28, y+16, '−', 'lbl');
+  if (vLabel) label(svg, x, y+58, vLabel, 'lbl-val');
+}
+function drawMeter(svg, x, y, letter, id) {
+  const g = el('g', id ? {id} : {});
+  g.appendChild(el('circle', {cx:x,cy:y,r:20, class:'meter-circle'}));
+  g.appendChild(el('text', {x,y:y+5, class:'meter-text'}, letter));
+  svg.appendChild(g);
+  return g;
+}
+function drawSwitch(svg, x, y, closed=false) {
+  svg.appendChild(el('circle', {cx:x-12,cy:y,r:4,class:'comp-fill','stroke-width':'2'}));
+  svg.appendChild(el('circle', {cx:x+12,cy:y,r:4,class:'comp-fill','stroke-width':'2'}));
+  if (closed) {
+    wire(svg, x-8, y, x+8, y);
+  } else {
+    svg.appendChild(el('line', {x1:x-8,y1:y,x2:x+10,y2:y-14, class:'comp','stroke-width':'2'}));
+  }
+}
+function drawGround(svg, x, y) {
+  wire(svg, x, y, x, y+15);
+  svg.appendChild(el('line', {x1:x-16,y1:y+15,x2:x+16,y2:y+15,class:'comp','stroke-width':'2'}));
+  svg.appendChild(el('line', {x1:x-10,y1:y+21,x2:x+10,y2:y+21,class:'comp','stroke-width':'2'}));
+  svg.appendChild(el('line', {x1:x-4,y1:y+27,x2:x+4,y2:y+27,class:'comp','stroke-width':'2'}));
+}
+
+// ═══════════════════════════════════════════
+//  SCENARIO DEFINITIONS
+// ═══════════════════════════════════════════
+
+const SCENARIOS = {
+
+// ─────────────────────────────────────────
+//  S1 · Amperímetro en Paralelo
+// ─────────────────────────────────────────
+1: {
+  title: 'Amperímetro en Paralelo',
+  badge: 'Alto riesgo', badgeClass: 'b-red',
+  objective: 'Mide la corriente total del circuito RL de 12 V / 10 Ω. Elige dónde y cómo conectar el amperímetro del multímetro.',
+  steps: ['Identificar los terminales del circuito', 'Elegir la conexión correcta del amperímetro', 'Verificar la lectura'],
+
+  buildCircuit(wrap) {
+    wrap.innerHTML = '';
+    const svg = makeSVG(500, 310);
+
+    // Main loop wires
+    wire(svg, 80, 60, 420, 60);   // top
+    wire(svg, 80, 60, 80, 260);   // left
+    wire(svg, 420, 60, 420, 260); // right
+    wire(svg, 80, 260, 420, 260); // bottom
+
+    // Battery on left side (vertical)
+    wire(svg, 80, 100, 80, 140);
+    svg.appendChild(el('line', {x1:60,y1:140,x2:100,y2:140,class:'comp','stroke-width':'4'}));
+    svg.appendChild(el('line', {x1:65,y1:160,x2:95,y2:160,class:'comp','stroke-width':'2.5'}));
+    wire(svg, 80, 160, 80, 200);
+    label(svg, 50, 150, '+');
+    label(svg, 50, 165, '−');
+    label(svg, 80, 225, '12 V DC', 'lbl-val');
+
+    // Resistor on top
+    svg.appendChild(el('rect', {x:162,y:48,width:56,height:24,class:'comp-fill',rx:3}));
+    label(svg, 190, 40, 'R = 10 Ω', 'lbl');
+
+    // Inductor on top
+    let d = `M ${290},${60}`;
+    for (let i = 0; i < 4; i++) d += ` A 8,8 0 0 1 ${290 + (i+1)*16},60`;
+    svg.appendChild(el('path', {d, class:'w', fill:'none'}));
+    label(svg, 330, 40, 'L = 50 mH', 'lbl');
+
+    // Nodes
+    node(svg, 80, 60);
+    node(svg, 420, 60);
+
+    // ── Wrong option ghost: ammeter in PARALLEL (across R) ──
+    const gWrong = el('g', {id:'g-wrong', opacity:'0'});
+    gWrong.appendChild(el('line', {x1:162,y1:90,x2:162,y2:130,class:'w-fault'}));
+    gWrong.appendChild(el('line', {x1:218,y1:90,x2:218,y2:130,class:'w-fault'}));
+    gWrong.appendChild(el('line', {x1:162,y1:130,x2:218,y2:130,class:'w-fault'}));
+    gWrong.appendChild(el('circle', {cx:190,cy:130,r:22,class:'meter-circle',stroke:'var(--red)'}));
+    gWrong.appendChild(el('text', {x:190,y:135, class:'meter-text',fill:'var(--red)'}, 'A'));
+    // sparks
+    for (let a of [[162,90],[218,90]]) {
+      const s = el('polygon', {points:`${a[0]},${a[1]-12} ${a[0]+8},${a[1]} ${a[0]},${a[1]+12} ${a[0]-8},${a[1]}`,
+        fill:'var(--amber)',class:'spark',id:`spark${a[0]}`});
+      gWrong.appendChild(s);
+    }
+    svg.appendChild(gWrong);
+
+    // ── Correct option: ammeter in SERIES (break in top-left wire) ──
+    const gRight = el('g', {id:'g-right', opacity:'0'});
+    gRight.appendChild(el('line', {x1:80,y1:60,x2:115,y2:60,class:'w-live'}));
+    gRight.appendChild(el('line', {x1:145,y1:60,x2:162,y2:60,class:'w-live'}));
+    gRight.appendChild(el('circle', {cx:130,cy:60,r:20,class:'meter-circle',stroke:'var(--green)'}));
+    gRight.appendChild(el('text', {x:130,y:65, class:'meter-text',fill:'var(--green)'}, 'A'));
+    gRight.appendChild(el('text', {x:130,y:95,class:'lbl-val',fill:'var(--green)'}, '1.2 A'));
+    svg.appendChild(gRight);
+
+    svg.appendChild(el('text', {x:250,y:190, class:'lbl'}, '← Circuito RL en serie →'));
+    wrap.appendChild(svg);
+  },
+
+  stages: [
+    {
+      label: 'Elegir conexión del amperímetro',
+      context: 'El circuito RL (12 V / 10 Ω) está armado pero sin energizar. El profesor indica que debes medir la corriente total antes de anotar resultados.',
+      question: '¿Cómo conectas el amperímetro para medir la corriente total?',
+      options: [
+        {
+          icon: '⚡',
+          label: 'En paralelo con la resistencia',
+          correct: false,
+          fb: `<strong>¡Cortocircuito!</strong> El amperímetro tiene una resistencia interna casi cero (≈ 0 Ω). Conectado en paralelo, provoca un cortocircuito entre los bornes de la resistencia, destruye el fusible del multímetro y puede dañar la fuente. Esta es la causa #1 de multímetros quemados en el laboratorio.`,
+          effect() {
+            const gw = document.getElementById('g-wrong');
+            if (gw) { gw.style.opacity = '1'; gw.style.transition = 'opacity .3s'; }
+            document.getElementById('circuit-wrap').classList.add('danger-bg');
+          }
+        },
+        {
+          icon: '✓',
+          label: 'En serie, abriendo el circuito',
+          correct: true,
+          fb: `<strong>¡Correcto!</strong> El amperímetro debe ir en <strong>serie</strong>: se abre el conductor principal y se inserta el instrumento para que toda la corriente pase por él. Lectura esperada: I = V/Z = 12 V / 10 Ω ≈ 1.2 A (circuito puramente resistivo).`,
+          effect() {
+            const gw = document.getElementById('g-wrong');
+            if (gw) gw.style.opacity = '0';
+            const gr = document.getElementById('g-right');
+            if (gr) { gr.style.opacity = '1'; gr.style.transition = 'opacity .4s'; }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Verificar escala del multímetro',
+      context: 'Elegiste conectar el amperímetro en serie — correcto. Ahora debes configurar el rango antes de cerrar el interruptor. El valor teórico esperado es I = 12/10 = 1.2 A.',
+      question: '¿Qué escala seleccionas en el multímetro para medir hasta 1.2 A DC?',
+      options: [
+        {
+          icon: '⚡',
+          label: '200 mA DC (escala demasiado baja)',
+          correct: false,
+          fb: `<strong>Escala insuficiente.</strong> 1.2 A supera el rango de 200 mA. El instrumento marcaría OL (sobrecarga) y podrías quemar el fusible interno de la escala de miliamperios. Siempre empieza por la escala más alta y baja gradualmente.`
+        },
+        {
+          icon: '✓',
+          label: '10 A DC (escala máxima → ajuste fino)',
+          correct: true,
+          fb: `<strong>¡Correcto!</strong> Con valor desconocido, parte siempre de la escala más alta (10 A). Tras confirmar la lectura (~1.2 A), puedes bajar a 2 A para mayor precisión. Las sondas deben estar en los terminales de 10 A o 20 A del multímetro.`
+        },
+        {
+          icon: '⚡',
+          label: '200 V AC (escala de voltaje)',
+          correct: false,
+          fb: `<strong>Error crítico.</strong> Estás en modo voltaje intentando medir corriente. Si conectas las sondas en las posiciones de tensión y pones el selector en amperios (o viceversa) puedes provocar un arco eléctrico y destruir el instrumento.`
+        }
+      ]
+    },
+    {
+      label: 'Verificar límite de corriente',
+      context: 'Multímetro configurado en 10 A DC, en serie. Todo listo para energizar. Recuerda: el banco tiene un límite estricto de 3.5 A según las normas del laboratorio.',
+      question: 'El circuito consume 1.2 A. ¿Qué concluyes antes de energizar?',
+      options: [
+        {
+          icon: '✓',
+          label: 'Es seguro: 1.2 A < 3.5 A. Procedo.',
+          correct: true,
+          fb: `<strong>¡Procedimiento completo y correcto!</strong> 1.2 A está muy por debajo del límite de 3.5 A. El circuito puede energizarse con seguridad. Recuerda dejar el amperímetro en la escala correcta y registrar la lectura en tu bitácora.`
+        },
+        {
+          icon: '⚡',
+          label: 'No estoy seguro, aumento la tensión para ver si el amperímetro se mueve más.',
+          correct: false,
+          fb: `<strong>¡Nunca aumentes tensión para "ver qué pasa"!</strong> Debes calcular la corriente teórica antes de energizar. Aumentar tensión sin control puede superar el límite de 3.5 A, destruir la resistencia y disparar el disyuntor del banco.`
+        }
+      ]
+    }
+  ]
+},
+
+// ─────────────────────────────────────────
+//  S2 · Escala Incorrecta del Multímetro
+// ─────────────────────────────────────────
+2: {
+  title: 'Escala Incorrecta del Multímetro',
+  badge: 'Alto riesgo', badgeClass: 'b-red',
+  objective: 'Debes medir el voltaje en los bornes de una resistencia de 100 Ω en un circuito de 15 V DC. Configura el multímetro correctamente.',
+  steps: ['Seleccionar la función (V / A / Ω)', 'Seleccionar el rango adecuado', 'Elegir la conexión correcta'],
+
+  buildCircuit(wrap) {
+    wrap.innerHTML = '';
+    const svg = makeSVG(500, 320);
+
+    // ── Circuit (left half) ──
+    // Battery
+    wire(svg, 80, 70, 80, 110);
+    svg.appendChild(el('line', {x1:60,y1:110,x2:100,y2:110,class:'comp','stroke-width':'4'}));
+    svg.appendChild(el('line', {x1:65,y1:130,x2:95,y2:130,class:'comp','stroke-width':'2.5'}));
+    wire(svg, 80, 130, 80, 240);
+    label(svg, 80, 265, '15 V DC', 'lbl-val');
+    wire(svg, 80, 70, 200, 70);
+    wire(svg, 80, 240, 200, 240);
+
+    // Resistor
+    svg.appendChild(el('rect', {x:172,y:58,width:56,height:24,class:'comp-fill',rx:3}));
+    label(svg, 200, 50, 'R', 'lbl');
+    label(svg, 200, 44, '100 Ω', 'lbl-val');
+    wire(svg, 228, 70, 255, 70);
+    wire(svg, 200, 240, 255, 240);
+
+    // Node dots
+    node(svg, 200, 70); node(svg, 200, 240);
+
+    // ── Multimeter (right half) ──
+    // Body
+    svg.appendChild(el('rect', {x:270,y:30,width:200,height:270,class:'comp-fill',rx:12,'stroke-width':'2'}));
+    label(svg, 370, 55, 'MULTÍMETRO DIGITAL', 'lbl');
+
+    // Display screen
+    svg.appendChild(el('rect', {x:290,y:65,width:160,height:50,rx:5,fill:'#001a00',stroke:'#2a5a2a','stroke-width':'1.5'}));
+    svg.appendChild(el('text', {x:370,y:97,class:'lbl-val',fill:'#00ff00','font-size':'18'}, '???.??'));
+
+    // Dial zones — clickable
+    const dialData = [
+      {id:'d-vdc', label:'V DC', sub:'200V / 20V', cx:340, cy:185, correct:true},
+      {id:'d-vac', label:'V AC', sub:'200V~', cx:400, cy:170, correct:false},
+      {id:'d-adc', label:'A DC', sub:'10A / 200mA', cx:420, cy:215, correct:false, danger:true},
+      {id:'d-ohm', label:'Ω', sub:'200kΩ', cx:355, cy:240, correct:false},
+      {id:'d-off', label:'OFF', sub:'', cx:310, cy:220, correct:false},
+    ];
+
+    // Dial circle
+    svg.appendChild(el('circle', {cx:370,cy:205,r:60,fill:'#0d1117',stroke:'var(--border)','stroke-width':'2'}));
+
+    dialData.forEach(d => {
+      const g = el('g', {id:d.id, class:'dial-zone', 'data-correct':d.correct, 'data-danger':!!d.danger, style:'cursor:pointer'});
+      g.appendChild(el('circle', {cx:d.cx,cy:d.cy,r:18,fill:d.id==='d-off'?'#111':'#1a2a3a',stroke:'var(--border)','stroke-width':'1.5'}));
+      g.appendChild(el('text', {x:d.cx,y:d.cy+4,class:'lbl','text-anchor':'middle','font-size':'11','font-weight':'600'}, d.label));
+      if (d.sub) g.appendChild(el('text', {x:d.cx,y:d.cy+15,class:'lbl','text-anchor':'middle','font-size':'9'}, d.sub));
+      svg.appendChild(g);
+    });
+
+    // Probe points in circuit
+    svg.appendChild(el('circle', {cx:255,cy:70,r:6,fill:var_('red'),id:'probe-top',style:'cursor:pointer'}));
+    svg.appendChild(el('circle', {cx:255,cy:240,r:6,fill:var_('red'),id:'probe-bot',style:'cursor:pointer'}));
+    label(svg, 255, 38, 'A', 'lbl');
+    label(svg, 255, 270, 'B', 'lbl');
+
+    // Wires from probes to meter (shown after correct dial)
+    const gProbes = el('g', {id:'g-probes',opacity:'0'});
+    gProbes.appendChild(el('line', {x1:255,y1:70,x2:290,y2:90,class:'w-live','stroke-dasharray':'6 3'}));
+    gProbes.appendChild(el('line', {x1:255,y1:240,x2:290,y2:270,class:'w-live','stroke-dasharray':'6 3'}));
+    svg.appendChild(gProbes);
+
+    // Danger sparks for wrong scale
+    const gDanger = el('g', {id:'g-danger',opacity:'0'});
+    gDanger.appendChild(el('circle', {cx:255,cy:155,r:30,fill:'var(--red)',opacity:'.18'}));
+    gDanger.appendChild(el('text', {x:255,y:160,class:'lbl',fill:'var(--red)','font-size':'26'}, '⚡'));
+    svg.appendChild(gDanger);
+
+    wrap.appendChild(svg);
+  },
+
+  stages: [
+    {
+      label: 'Seleccionar función del multímetro',
+      context: 'El multímetro está apagado frente a ti. El circuito DC de 15 V / 100 Ω está armado. Tu tarea es medir el voltaje en los bornes de la resistencia.',
+      question: '¿Qué función seleccionas en el dial del multímetro?',
+      options: [
+        {
+          icon: '✓', label: 'V DC — Voltaje en corriente directa',
+          correct: true,
+          fb: `<strong>¡Correcto!</strong> Para medir voltaje DC seleccionas la posición V DC (o VDC / ⎓). El voltímetro se conectará en <strong>paralelo</strong> con el elemento a medir.`,
+          effect() {
+            const d = document.getElementById('d-vdc');
+            if (d) d.querySelector('circle').setAttribute('fill','#1a4731');
+            const gp = document.getElementById('g-probes');
+            if (gp) { gp.style.opacity='1'; gp.style.transition='opacity .4s'; }
+          }
+        },
+        {
+          icon: '⚡', label: 'A DC — Corriente en corriente directa',
+          correct: false,
+          fb: `<strong>¡Peligro crítico!</strong> Seleccionar amperios (A) convierte el multímetro en un shunt de muy baja resistencia. Si luego lo conectas en paralelo con cualquier elemento, produces un cortocircuito que destruye el instrumento y puede provocar un arco. Este es el error más frecuente en el laboratorio (57% de los estudiantes reportan este momento como el más estresante).`,
+          effect() {
+            const d = document.getElementById('d-adc');
+            if (d) d.querySelector('circle').setAttribute('fill',var_('red-dim'));
+            const gd = document.getElementById('g-danger');
+            if (gd) { gd.style.opacity='1'; gd.style.transition='opacity .3s'; }
+            document.getElementById('circuit-wrap').classList.add('danger-bg');
+          }
+        },
+        {
+          icon: '⚡', label: 'Ω — Resistencia (óhmetro)',
+          correct: false,
+          fb: `<strong>Error.</strong> La función Ω mide resistencia y usa su propia fuente interna. Nunca debes medir Ω con el circuito energizado: podrías dañar el instrumento o recibir una lectura incorrecta. El circuito debe estar <strong>completamente desenergizado</strong> para medir resistencia.`
+        }
+      ]
+    },
+    {
+      label: 'Seleccionar rango del voltímetro',
+      context: 'Seleccionaste V DC — correcto. Ahora debes elegir el rango de medición. La fuente es 15 V DC. Si el rango es menor que la tensión real, el display marcará OL (sobrecarga).',
+      question: '¿Qué rango eliges para medir 15 V DC con la mayor precisión posible?',
+      options: [
+        {
+          icon: '⚡', label: '2 V (rango demasiado bajo)',
+          correct: false,
+          fb: `<strong>Rango insuficiente.</strong> 15 V > 2 V → el display mostrará OL (overload). Si el instrumento no tiene protección automática, podrías dañar el circuito de medición. Regla: empieza siempre por el rango más alto y baja gradualmente.`
+        },
+        {
+          icon: '✓', label: '20 V (cubre 15 V con margen)',
+          correct: true,
+          fb: `<strong>¡Correcto!</strong> El rango 20 V es el más pequeño que puede medir 15 V sin sobrepasar el fondo de escala. Esto maximiza la resolución de la lectura. Si hubiera un rango de 200 V también serviría para empezar, pero 20 V da más decimales.`
+        },
+        {
+          icon: '⚡', label: '200 mV (milivolts — rango inadecuado)',
+          correct: false,
+          fb: `<strong>Rango totalmente inadecuado.</strong> 15 V es 75 veces mayor que el fondo de escala (200 mV). El instrumento marcará OL inmediatamente y en multímetros sin autoprotección se puede dañar la entrada.`
+        }
+      ]
+    },
+    {
+      label: 'Conectar el voltímetro',
+      context: 'Multímetro en V DC / 20 V. El circuito está energizado. Los puntos A y B son los extremos de la resistencia de 100 Ω. Ahora debes colocar las sondas.',
+      question: '¿Cómo conectas las sondas del voltímetro para medir el voltaje en R?',
+      options: [
+        {
+          icon: '⚡', label: 'En serie, abriendo el conductor principal',
+          correct: false,
+          fb: `<strong>Eso es para el amperímetro, no el voltímetro.</strong> Si colocas el voltímetro en serie, su alta impedancia interna (~10 MΩ) interrumpirá prácticamente toda la corriente del circuito y la lectura de voltaje será incorrecta (casi todo el voltaje caerá en el instrumento).`
+        },
+        {
+          icon: '✓', label: 'En paralelo, entre los nodos A y B de la resistencia',
+          correct: true,
+          fb: `<strong>¡Perfecto! Procedimiento completo.</strong> El voltímetro tiene altísima resistencia interna (≈10 MΩ), por lo que en paralelo prácticamente no perturba el circuito. La lectura esperada en R: V_R = 15 V (si no hay otra carga en serie). Anota la lectura y compara con tu cálculo teórico.`
+        }
+      ]
+    }
+  ]
+},
+
+// ─────────────────────────────────────────
+//  S3 · Falso Cero — Verificación Trifásica
+// ─────────────────────────────────────────
+3: {
+  title: 'Falso Cero — Circuito Trifásico',
+  badge: 'Riesgo severo', badgeClass: 'b-red',
+  objective: 'Terminó la práctica trifásica. El interruptor principal aparece en OFF. Debes desmontar el circuito. ¿Cómo lo haces?',
+  steps: ['Verificar estado del interruptor', 'Medir cada fase antes de tocar', 'Proceder con seguridad'],
+
+  buildCircuit(wrap) {
+    wrap.innerHTML = '';
+    const svg = makeSVG(500, 310);
+
+    // Three-phase bus (left)
+    const phases = [{label:'R (Negro)',y:80,cls:'phase-R'},{label:'S (Azul)',y:155,cls:'phase-S'},{label:'T (Rojo)',y:230,cls:'phase-T'}];
+    phases.forEach(p => {
+      svg.appendChild(el('line', {x1:60,y1:p.y,x2:200,y2:p.y,class:p.cls,'stroke-width':'3',fill:'none'}));
+      label(svg, 35, p.y+4, p.label, 'lbl');
+    });
+
+    // Breaker (center)
+    svg.appendChild(el('rect', {x:200,y:55,width:60,height:190,class:'comp-fill',rx:6}));
+    label(svg, 230, 48, 'BREAKER', 'lbl');
+    // Breaker contacts
+    phases.forEach(p => {
+      svg.appendChild(el('circle', {cx:210,cy:p.y,r:5,fill:'var(--muted)'}));
+      svg.appendChild(el('circle', {cx:248,cy:p.y,r:5,fill:'var(--muted)'}));
+      // Switch lever — "OFF" → gap visible
+      svg.appendChild(el('line', {x1:214,y1:p.y-1,x2:246,y2:p.y-14,class:'comp','stroke-width':'2'}));
+    });
+    // OFF label
+    svg.appendChild(el('text', {x:230,y:258,class:'lbl',fill:'var(--green)','font-size':'13','font-weight':'700','text-anchor':'middle'}, 'OFF'));
+
+    // Right side circuit
+    phases.forEach((p,i) => {
+      svg.appendChild(el('line', {x1:260,y1:p.y,x2:360,y2:p.y,class:p.cls,'stroke-width':'3',fill:'none'}));
+    });
+
+    // Load (motor)
+    svg.appendChild(el('circle', {cx:400,cy:155,r:45,class:'comp-fill','stroke-width':'2'}));
+    label(svg, 400, 150, 'Motor', 'lbl');
+    label(svg, 400, 165, 'Trifásico', 'lbl');
+    svg.appendChild(el('line', {x1:355,y1:110,x2:380,y2:130,class:'comp','stroke-width':'2'}));
+    svg.appendChild(el('line', {x1:355,y1:155,x2:355,y2:155,class:'comp','stroke-width':'2'}));
+    svg.appendChild(el('line', {x1:355,y1:200,x2:380,y2:180,class:'comp','stroke-width':'2'}));
+
+    // Probe points on right-side lines
+    const pts = [{id:'pt-R',x:310,y:80},{id:'pt-S',x:310,y:155},{id:'pt-T',x:310,y:230}];
+    pts.forEach(p => {
+      const g = el('g', {id:p.id,class:'conn',style:'cursor:pointer'});
+      g.appendChild(el('circle', {cx:p.x,cy:p.y,r:8,fill:'var(--surface2)',stroke:'var(--muted)','stroke-width':'2'}));
+      svg.appendChild(g);
+    });
+
+    // Voltmeter ghost
+    const gV = el('g', {id:'g-voltmeter',opacity:'0'});
+    gV.appendChild(el('circle', {cx:310,cy:280,r:22,class:'meter-circle'}));
+    gV.appendChild(el('text', {x:310,y:285,class:'meter-text'}, 'V'));
+    svg.appendChild(gV);
+
+    // Residual voltage indicator on T
+    const gResid = el('g', {id:'g-resid',opacity:'0'});
+    gResid.appendChild(el('circle', {cx:310,cy:230,r:8,fill:'var(--red)',stroke:'var(--red)','stroke-width':'2'}));
+    gResid.appendChild(el('text', {x:310,y:215,class:'lbl',fill:'var(--red)','font-size':'11'}, '28 V !', 'lbl'));
+    svg.appendChild(gResid);
+
+    // Shock hazard overlay
+    const gShock = el('g', {id:'g-shock',opacity:'0'});
+    gShock.appendChild(el('rect', {x:0,y:0,width:500,height:310,fill:'var(--red)',opacity:'.08'}));
+    gShock.appendChild(el('text', {x:250,y:165,class:'lbl',fill:'var(--red)','font-size':'64','text-anchor':'middle'}, '⚡'));
+    gShock.appendChild(el('text', {x:250,y:210,class:'lbl',fill:'var(--red)','font-size':'14','text-anchor':'middle'}, '¡DESCARGA ELÉCTRICA!', 'lbl'));
+    svg.appendChild(gShock);
+
+    // OK overlay
+    const gOK = el('g', {id:'g-ok',opacity:'0'});
+    gOK.appendChild(el('text', {x:310,y:295,class:'lbl',fill:'var(--green)','font-size':'10','text-anchor':'middle'}, 'R: 0V  S: 0V  T: 28V!'));
+    svg.appendChild(gOK);
+
+    wrap.appendChild(svg);
+  },
+
+  stages: [
+    {
+      label: 'Acción inicial al terminar la práctica',
+      context: 'Terminó la práctica trifásica. El interruptor principal marca OFF. El profesor se alejó un momento. Tienes que desmontar el circuito para el siguiente grupo.',
+      question: '¿Cuál es tu primer paso antes de tocar cualquier cable?',
+      options: [
+        {
+          icon: '⚡', label: 'El breaker está en OFF, empiezo a desconectar cables.',
+          correct: false,
+          fb: `<strong>¡ERROR CRÍTICO!</strong> El breaker en OFF no garantiza voltaje cero. Los condensadores del circuito pueden retener carga, o el breaker puede tener un contacto defectuoso. Nunca toques cables sin verificar instrumentalmente. El laboratorio registra contactos mecánicos defectuosos en el banco móvil.`,
+          effect() {
+            const gs = document.getElementById('g-shock');
+            if (gs) { gs.style.opacity='1'; gs.style.transition='opacity .3s'; }
+            document.getElementById('circuit-wrap').classList.add('danger-bg');
+          }
+        },
+        {
+          icon: '✓', label: 'Verifico con voltímetro en CADA fase antes de tocar.',
+          correct: true,
+          fb: `<strong>¡Procedimiento correcto!</strong> Aunque el breaker esté en OFF, la única confirmación válida es una medición instrumental de 0 V en cada conductor. Conecta el voltímetro y mide fase a neutro en R, S y T.`,
+          effect() {
+            const gv = document.getElementById('g-voltmeter');
+            if (gv) { gv.style.opacity='1'; gv.style.transition='opacity .4s'; }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Medir las tres fases',
+      context: 'Hiciste bien: tomaste el voltímetro y mediste cada fase antes de tocar. Resultado: R = 0 V ✓, S = 0 V ✓, T = 28 V ⚠. El breaker está en OFF pero la fase T aún tiene tensión residual.',
+      question: 'La fase T marca 28 V aunque el interruptor esté en OFF. ¿Qué haces?',
+      options: [
+        {
+          icon: '⚡', label: 'Son solo 28 V, no es peligroso. Desconecto T rápido.',
+          correct: false,
+          fb: `<strong>¡28 V puede ser letal!</strong> La corriente que atraviesa el cuerpo humano depende de la tensión y la resistencia corporal (~1 kΩ húmedo). 28 V / 1000 Ω = 28 mA → muy por encima del umbral de fibrilación ventricular (15–100 mA). Además, la fase T podría estar a tensión completa en el polo del breaker.`,
+          effect() {
+            const gs = document.getElementById('g-shock');
+            if (gs) { gs.style.opacity='1'; gs.style.transition='opacity .3s'; }
+            document.getElementById('circuit-wrap').classList.add('danger-bg');
+          }
+        },
+        {
+          icon: '✓', label: 'Informo al profesor y espero a que T llegue a 0 V.',
+          correct: true,
+          fb: `<strong>¡Decisión correcta!</strong> La fase T tiene tensión residual (carga en condensadores o fallo en el breaker). Debes: 1) No tocar nada. 2) Notificar al profesor. 3) Volver a medir hasta confirmar 0 V en las tres fases. Solo entonces es seguro desmontar.`,
+          effect() {
+            const gr = document.getElementById('g-resid');
+            if (gr) { gr.style.opacity='1'; gr.style.transition='opacity .4s'; }
+            const go = document.getElementById('g-ok');
+            if (go) { go.style.opacity='1'; go.style.transition='opacity .4s'; }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Orden de desmontaje',
+      context: 'Esperaste, avisaste al profesor, y volviste a medir. Las tres fases ahora leen 0 V. El circuito está completamente desenergizado. Puedes desmontar.',
+      question: '¿En qué orden retiras los conductores del circuito?',
+      options: [
+        {
+          icon: '✓', label: 'Cables de carga → cables de fase → neutro → tierra (últimos)',
+          correct: true,
+          fb: `<strong>¡Orden correcto!</strong> La tierra (PE) siempre se conecta primero y se desconecta al final. Esto garantiza que si hay una tensión residual no detectada, la corriente de falla se derive a tierra y no al operario. COVENIN y NEC establecen este orden obligatoriamente.`
+        },
+        {
+          icon: '⚡', label: 'Empiezo por el cable de tierra, luego el resto.',
+          correct: false,
+          fb: `<strong>Error de procedimiento.</strong> La tierra se desconecta ÚLTIMA. Si desconectas el PE primero y hay tensión residual o una falla de aislamiento, el chasís queda flotante y la corriente de falla no tiene camino seguro → riesgo de electrocución.`
+        }
+      ]
+    }
+  ]
+},
+
+// ─────────────────────────────────────────
+//  S4 · Falso Contacto en Circuito RLC
+// ─────────────────────────────────────────
+4: {
+  title: 'Falso Contacto en Circuito RLC',
+  badge: 'Riesgo medio', badgeClass: 'b-amber',
+  objective: 'Antes de energizar el circuito RLC serie, debes inspeccionar físicamente cada conector banana. Hay conectores flojos que causarán lecturas inestables o arcos.',
+  steps: ['Inspeccionar los 8 conectores del circuito', 'Apretar los que estén flojos', 'Verificar que todo esté firme y energizar'],
+
+  _looseIds: new Set(),
+  _fixedIds: new Set(),
+  _totalLoose: 3,
+
+  buildCircuit(wrap) {
+    wrap.innerHTML = '';
+    const svg = makeSVG(500, 310);
+
+    // Main circuit loop
+    // Top rail
+    wire(svg, 60, 70, 440, 70);
+    // Bottom rail
+    wire(svg, 60, 260, 440, 260);
+    // Left side (battery)
+    wire(svg, 60, 70, 60, 100);
+    svg.appendChild(el('line', {x1:40,y1:100,x2:80,y2:100,class:'comp','stroke-width':'4'}));
+    svg.appendChild(el('line', {x1:46,y1:120,x2:74,y2:120,class:'comp','stroke-width':'2.5'}));
+    wire(svg, 60, 120, 60, 260);
+    label(svg, 60, 280, '24 V DC', 'lbl-val');
+
+    // Switch on top
+    drawSwitch(svg, 130, 70, false);
+
+    // Resistor
+    svg.appendChild(el('rect', {x:192,y:58,width:56,height:24,class:'comp-fill',rx:3}));
+    label(svg, 220, 48, 'R = 47Ω', 'lbl');
+
+    // Inductor on top right
+    let d = `M ${285},70`;
+    for (let i=0;i<4;i++) d += ` A 7,7 0 0 1 ${285+(i+1)*14},70`;
+    svg.appendChild(el('path', {d,class:'w',fill:'none'}));
+    label(svg, 340, 48, 'L = 100mH', 'lbl');
+
+    // Capacitor on right side (vertical)
+    wire(svg, 440, 70, 440, 120);
+    svg.appendChild(el('line', {x1:420,y1:120,x2:460,y2:120,class:'comp','stroke-width':'4'}));
+    svg.appendChild(el('line', {x1:420,y1:135,x2:460,y2:135,class:'comp','stroke-width':'2.5'}));
+    wire(svg, 440, 135, 440, 260);
+    label(svg, 470, 128, 'C', 'lbl');
+    label(svg, 470, 140, '47μF', 'lbl');
+
+    // Ammeter on bottom
+    drawMeter(svg, 300, 260, 'A');
+    wire(svg, 320, 260, 440, 260);
+    wire(svg, 60, 260, 200, 260);
+
+    // Voltmeter across load
+    const gV = el('g');
+    drawMeter(svg, 190, 165, 'V');
+    wire(svg, 190, 143, 190, 70);
+    wire(svg, 190, 187, 190, 260);
+    svg.appendChild(gV);
+
+    // ── 8 Connector nodes, 3 loose ──
+    const connPositions = [
+      {id:'c1',x:130,y:70},{id:'c2',x:192,y:70},{id:'c3',x:248,y:70},
+      {id:'c4',x:285,y:70},{id:'c5',x:397,y:70},
+      {id:'c6',x:440,y:70},{id:'c7',x:200,y:260},{id:'c8',x:390,y:260}
+    ];
+    // Randomly pick 3 to be loose (fixed seed for determinism)
+    const looseSet = new Set(['c2','c5','c8']);
+    this._looseIds = new Set(looseSet);
+    this._fixedIds = new Set();
+
+    connPositions.forEach(p => {
+      const g = el('g', {id:p.id, class: looseSet.has(p.id) ? 'conn loose' : 'conn', 'data-loose': looseSet.has(p.id) ? '1' : '0'});
+      g.appendChild(el('circle', {cx:p.x,cy:p.y,r:7,fill: looseSet.has(p.id)?'var(--amber)':'var(--surface2)',stroke: looseSet.has(p.id)?'var(--amber)':'var(--muted)','stroke-width':'2'}));
+      svg.appendChild(g);
+    });
+
+    // Meter displays
+    const gMeters = el('g', {id:'g-meters',opacity:'.4'});
+    gMeters.appendChild(el('text', {x:300,y:295,class:'lbl-val','font-size':'11'}, '?.?? A'));
+    gMeters.appendChild(el('text', {x:190,y:210,class:'lbl-val','font-size':'11'}, '??.? V'));
+    svg.appendChild(gMeters);
+
+    const gMetersOk = el('g', {id:'g-meters-ok',opacity:'0'});
+    gMetersOk.appendChild(el('text', {x:300,y:295,class:'lbl-val','font-size':'11',fill:'var(--green)'}, '0.51 A ✓'));
+    gMetersOk.appendChild(el('text', {x:190,y:210,class:'lbl-val','font-size':'11',fill:'var(--green)'}, '24.0 V ✓'));
+    svg.appendChild(gMetersOk);
+
+    // Unstable reading overlay
+    const gUnstable = el('g', {id:'g-unstable',opacity:'0'});
+    gUnstable.appendChild(el('text', {x:300,y:295,class:'lbl-val','font-size':'11',fill:'var(--amber)'}, '~1.3 A ⚠'));
+    gUnstable.appendChild(el('text', {x:190,y:210,class:'lbl-val','font-size':'11',fill:'var(--amber)'}, '~18 V ⚠'));
+    svg.appendChild(gUnstable);
+
+    wrap.appendChild(svg);
+  },
+
+  getConnectorState() {
+    return { remaining: this._looseIds.size - this._fixedIds.size };
+  },
+
+  stages: [
+    {
+      label: 'Inspeccionar conectores banana',
+      context: 'El circuito RLC está armado sobre el banco. Antes de energizar debes verificar que todas las conexiones estén firmes. Los conectores flojos generan falso contacto: lecturas inestables y posibles arcos.',
+      question: 'Haz clic en cada conector ámbar parpadeante del circuito para inspeccionarlo y apretarlo.',
+      isConnectorStage: true,
+      options: [
+        {
+          icon: '⚡', label: 'Ya están bien, energizo ahora.',
+          correct: false,
+          fb: `<strong>Quedan conectores flojos.</strong> Un falso contacto genera resistencia de contacto variable → lecturas inestables, calentamiento localizado y posibles arcos. Debes inspeccionar y apretar TODOS los conectores antes de energizar.`,
+          checkLoose: true
+        },
+        {
+          icon: '✓', label: 'He inspeccionado y apretado todos. Procedo.',
+          correct: true,
+          requiresFixed: true,
+          fb: `<strong>¡Correcto!</strong> Todos los conectores verificados y firmes. Las lecturas serán estables. Recuerda: ante lecturas que oscilan durante la práctica, lo primero es sospechar de falso contacto antes de ajustar la fuente.`,
+          effect() {
+            const gu = document.getElementById('g-unstable');
+            if (gu) gu.style.opacity = '0';
+            const gm = document.getElementById('g-meters-ok');
+            if (gm) { gm.style.opacity='1'; gm.style.transition='opacity .5s'; }
+          }
+        }
+      ]
+    },
+    {
+      label: 'Reconocer síntoma de falso contacto',
+      context: 'El circuito está energizado. Sin tocar nada, notas que la corriente en el amperímetro salta de 0.4 A a 1.3 A de forma irregular. Los valores deberían ser estables.',
+      question: '¿Cuál es tu primera acción ante una lectura oscilante?',
+      options: [
+        {
+          icon: '⚡', label: 'Aumento la tensión para estabilizar la lectura.',
+          correct: false,
+          fb: `<strong>Error peligroso.</strong> Aumentar tensión con una conexión defectuosa puede hacer que el arco en el conector sea más intenso, sobrecalentar el cable y disparar el límite de 3.5 A. La oscilación de lectura es diagnóstico de falso contacto, no de tensión insuficiente.`
+        },
+        {
+          icon: '✓', label: 'Bajo tensión a 0 V y verifico físicamente cada conector.',
+          correct: true,
+          fb: `<strong>¡Procedimiento correcto!</strong> Lecturas oscilantes = falso contacto hasta demostrar lo contrario. Pasos: 1) Reducir tensión a 0 V. 2) Abrir el disyuntor. 3) Presionar y rotar cada conector banana para confirmar asiento mecánico. 4) Verificar que no haya cables doblados en el extremo del banana plug. 5) Reenergizar lentamente y verificar estabilidad.`
+        }
+      ]
+    },
+    {
+      label: 'Verificar cables antes de usar',
+      context: 'Vas a armar un nuevo circuito. El banco está apagado. Sobre la mesa hay cables de distintos colores y tamaños, algunos con años de uso. Algunos pueden tener roturas internas invisibles.',
+      question: '¿Cómo verificas que un cable esté en buen estado antes de usarlo?',
+      options: [
+        {
+          icon: '⚡', label: 'Los reviso visualmente: si no tienen daños visibles, los uso.',
+          correct: false,
+          fb: `<strong>Verificación incompleta.</strong> El 100% de los estudiantes encuestados confía solo en la inspección visual. Pero un cable puede tener rotura interna (hilo cortado dentro de la funda) sin ningún indicio externo. La inspección visual NO es suficiente.`
+        },
+        {
+          icon: '✓', label: 'Función continuidad del multímetro (tono audio) en cada cable.',
+          correct: true,
+          fb: `<strong>¡Correcto!</strong> La función de continuidad (símbolo de diodo/sonido ))) en el multímetro es la única forma segura de verificar un cable. Si hay tono continuo: el conductor es íntegro. Si el tono interrumpe o no suena: el cable tiene rotura interna → desechar y reponer.`
+        }
+      ]
+    }
+  ]
+},
+
+// ─────────────────────────────────────────
+//  S5 · Regulación con Reóstato
+// ─────────────────────────────────────────
+5: {
+  title: 'Control de Corriente con Reóstato',
+  badge: 'Práctica', badgeClass: 'b-blue',
+  objective: 'La fuente es 24 V DC y la carga fija es 6 Ω. Ajusta el reóstato para que la corriente sea exactamente 2.0 A (±0.1 A) ANTES de energizar. Límite del banco: 3.5 A.',
+  steps: ['Calcular la R necesaria para I = 2.0 A', 'Ajustar el reóstato ANTES de energizar', 'Verificar que I < 3.5 A y energizar'],
+
+  _rVar: 6,
+
+  buildCircuit(wrap) {
+    wrap.innerHTML = '';
+    const svg = makeSVG(500, 310);
+
+    // Main loop
+    wire(svg, 60, 70, 440, 70);  // top
+    wire(svg, 60, 240, 440, 240); // bottom
+    wire(svg, 60, 70, 60, 100);
+    svg.appendChild(el('line', {x1:40,y1:100,x2:80,y2:100,class:'comp','stroke-width':'4'}));
+    svg.appendChild(el('line', {x1:46,y1:118,x2:74,y2:118,class:'comp','stroke-width':'2.5'}));
+    wire(svg, 60, 118, 60, 240);
+    label(svg, 60, 262, '24 V DC', 'lbl-val');
+
+    // Switch on top
+    wire(svg, 60, 70, 110, 70);
+    svg.appendChild(el('circle', {cx:110,cy:70,r:4,fill:'var(--muted)'}));
+    svg.appendChild(el('circle', {cx:140,cy:70,r:4,fill:'var(--muted)'}));
+    const swLine = el('line', {id:'sw-line',x1:113,y1:69,x2:137,y2:56,class:'comp','stroke-width':'2'});
+    svg.appendChild(swLine);
+    label(svg, 125, 50, 'SW', 'lbl');
+
+    // Rheostat (variable resistor) — box with arrow
+    wire(svg, 140, 70, 190, 70);
+    svg.appendChild(el('rect', {x:190,y:58,width:70,height:24,class:'comp-fill',rx:3}));
+    svg.appendChild(el('line', {x1:210,y1:46,x2:240,y2:58,stroke:'var(--amber)','stroke-width':'2',class:'comp',id:'rheo-arrow'}));
+    svg.appendChild(el('polygon', {points:'238,54 244,62 232,62',fill:'var(--amber)',id:'rheo-tip'}));
+    label(svg, 225, 100, 'Reóstato', 'lbl');
+    svg.appendChild(el('text', {x:225,y:113,class:'lbl-val',id:'rheo-lbl'}, 'R_var = 6 Ω'));
+    wire(svg, 260, 70, 300, 70);
+
+    // Fixed load
+    svg.appendChild(el('rect', {x:300,y:58,width:60,height:24,class:'comp-fill',rx:3}));
+    label(svg, 330, 100, 'Carga', 'lbl');
+    label(svg, 330, 112, '6 Ω', 'lbl');
+    wire(svg, 360, 70, 440, 70);
+
+    // Right side down
+    wire(svg, 440, 70, 440, 240);
+
+    // Ammeter on bottom
+    wire(svg, 60, 240, 200, 240);
+    drawMeter(svg, 220, 240, 'A');
+    svg.appendChild(el('text', {x:220,y:276,class:'lbl-val',id:'ammeter-read'}, '--- A'));
+    wire(svg, 240, 240, 440, 240);
+
+    // Safe zone indicator
+    const gSafe = el('g', {id:'g-safe',opacity:'0'});
+    gSafe.appendChild(el('text', {x:250,y:30,class:'lbl',fill:'var(--green)','font-size':'13','text-anchor':'middle','font-weight':'600'}, '✓ ZONA SEGURA — Listo para energizar'));
+    svg.appendChild(gSafe);
+    const gOver = el('g', {id:'g-over',opacity:'0'});
+    gOver.appendChild(el('text', {x:250,y:30,class:'lbl',fill:'var(--red)','font-size':'13','text-anchor':'middle','font-weight':'600'}, '⚡ SOBRECARGA — Corriente > 3.5 A'));
+    svg.appendChild(gOver);
+
+    // Live wires overlay (shown when energized)
+    const gLive = el('g', {id:'g-live',opacity:'0'});
+    gLive.appendChild(el('line', {x1:60,y1:70,x2:440,y2:70,class:'w-live','stroke-width':'2.5',fill:'none'}));
+    gLive.appendChild(el('line', {x1:60,y1:240,x2:440,y2:240,class:'w-live','stroke-width':'2.5',fill:'none'}));
+    svg.appendChild(gLive);
+
+    wrap.appendChild(svg);
+  },
+
+  // called when slider moves
+  updateSlider(val) {
+    this._rVar = parseFloat(val);
+    const rTotal = this._rVar + 6;
+    const I = 24 / rTotal;
+    const lbl = document.getElementById('rheo-lbl');
+    if (lbl) lbl.textContent = `R_var = ${this._rVar.toFixed(1)} Ω`;
+    const read = document.getElementById('ammeter-read');
+    if (read) read.textContent = I.toFixed(2) + ' A';
+    const safe = document.getElementById('g-safe');
+    const over = document.getElementById('g-over');
+    const live = document.getElementById('g-live');
+    if (I <= 3.5 && I >= 1.9 && I <= 2.1) {
+      if (safe) safe.style.opacity = '1';
+      if (over) over.style.opacity = '0';
+    } else if (I > 3.5) {
+      if (safe) safe.style.opacity = '0';
+      if (over) { over.style.opacity = '1'; over.style.transition = 'opacity .2s'; }
+      if (live) live.style.opacity = '0';
+    } else {
+      if (safe) safe.style.opacity = '0';
+      if (over) over.style.opacity = '0';
+    }
+    // Move arrow on rheostat
+    const arrowX = 210 + (this._rVar / 20) * 30;
+    const arrow = document.getElementById('rheo-arrow');
+    if (arrow) { arrow.setAttribute('x1', arrowX); arrow.setAttribute('x2', arrowX + 2); }
+  },
+
+  stages: [
+    {
+      label: 'Ajustar reóstato antes de energizar',
+      isSliderStage: true,
+      context: 'El banco está apagado. La fuente es 24 V DC y la carga fija es 6 Ω. Necesitas que la corriente de trabajo sea 2.0 A exactos. El límite del banco es 3.5 A — no puedes superarlo.',
+      question: 'Calcula y ajusta el reóstato para obtener I = 2.0 A. Luego confirma que es seguro energizar.',
+      options: [
+        {
+          icon: '✓', label: 'R_var calculada y ajustada. Energizo.',
+          correct: true,
+          requiresTarget: true,
+          fb: `<strong>¡Correcto!</strong> Por ley de Ohm: R_total = V/I = 24/2 = 12 Ω. Como la carga es 6 Ω, el reóstato debe estar en R_var = 12 − 6 = <strong>6 Ω</strong>. La corriente resultante es 2.0 A, bien por debajo del límite de 3.5 A. Recuerda: el reóstato se ajusta ANTES de energizar, nunca mientras el circuito está bajo carga.`,
+          effect() {
+            const sw = document.getElementById('sw-line');
+            if (sw) { sw.setAttribute('x2','137'); sw.setAttribute('y2','69'); }
+            const gl = document.getElementById('g-live');
+            if (gl) { gl.style.opacity='.6'; gl.style.transition='opacity .5s'; }
+            const read = document.getElementById('ammeter-read');
+            if (read) { read.setAttribute('fill','var(--green)'); }
+          }
+        },
+        {
+          icon: '⚡', label: 'Energizo primero y ajusto el reóstato mientras miro el amperímetro.',
+          correct: false,
+          fb: `<strong>¡Procedimiento incorrecto!</strong> Ajustar el reóstato con el circuito energizado puede provocar que en un momento pases por R = 0 Ω, resultando en I = 24/6 = 4 A, superando el límite de 3.5 A y disparando el disyuntor. Siempre calcula y ajusta ANTES de energizar.`
+        }
+      ]
+    },
+    {
+      label: 'Recalcular con carga diferente',
+      context: 'El profesor modifica la práctica: cambia la carga fija de 6 Ω a 4 Ω. El banco está apagado. Debes recalcular el reóstato para mantener la corriente en 2 A.',
+      question: 'Con la carga en 4 Ω, ¿cuál debe ser el nuevo valor de R_var para que I = 2 A?',
+      options: [
+        {
+          icon: '⚡', label: '6 Ω (mismo que antes)',
+          correct: false,
+          fb: `<strong>Incorrecto.</strong> Con R_var = 6 Ω y carga = 4 Ω: R_total = 10 Ω, I = 24/10 = 2.4 A. La corriente cambia porque la carga cambió. Debes recalcular cada vez que varía el circuito.`
+        },
+        {
+          icon: '✓', label: '8 Ω (R_total = 12 Ω → I = 2 A)',
+          correct: true,
+          fb: `<strong>¡Correcto!</strong> R_total = V/I = 24/2 = 12 Ω. Con carga = 4 Ω, R_var = 12 − 4 = <strong>8 Ω</strong>. Este recálculo debe hacerse ANTES de reenergizar el circuito modificado.`
+        },
+        {
+          icon: '⚡', label: '4 Ω (mitad de la carga)',
+          correct: false,
+          fb: `<strong>Incorrecto.</strong> R_var = 4 Ω + carga = 4 Ω → R_total = 8 Ω, I = 24/8 = 3 A. Aunque no supera 3.5 A, no cumple el objetivo de 2 A. El cálculo correcto es R_var = (V/I_objetivo) − R_carga.`
+        }
+      ]
+    },
+    {
+      label: 'Secuencia de apagado del banco',
+      context: 'La práctica terminó. El banco está encendido con el circuito bajo carga (I = 2 A, V = 24 V). Debes apagar todo correctamente para no dañar los equipos ni dejar el banco en condición peligrosa para el siguiente grupo.',
+      question: '¿Cuál es el orden correcto para apagar el banco de pruebas?',
+      options: [
+        {
+          icon: '⚡', label: 'Abro el disyuntor directamente sin bajar tensión.',
+          correct: false,
+          fb: `<strong>Error de procedimiento.</strong> Cortar la corriente bruscamente con el disyuntor mientras el circuito está bajo carga puede generar una sobretensión transitoria (arco en el disyuntor). Además, deja la fuente con tensión configurada para el próximo usuario.`
+        },
+        {
+          icon: '✓', label: 'Tensión a 0 V → selector a 0 → disyuntor OFF → desmontar.',
+          correct: true,
+          fb: `<strong>¡Secuencia correcta!</strong> 1) Reduce la tensión de salida a 0 V girando el potenciómetro. 2) Lleva el selector de rango a la posición mínima. 3) Abre el disyuntor principal. 4) Verifica 0 V con voltímetro. 5) Desmonta los cables en orden. Esta secuencia garantiza que no haya transitorios y que el banco quede seguro para el próximo grupo.`
+        }
+      ]
+    }
+  ]
+}
+
+}; // end SCENARIOS
+
+// ═══════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════
+function var_(name) { return `var(--${name})`; }
+
+const CARD_META = [
+  {id:1, desc:'Medir corriente en un circuito RL con el multímetro. Evitar el cortocircuito más frecuente del laboratorio.'},
+  {id:2, desc:'Configurar correctamente el multímetro (función + rango + conexión) para medir voltaje DC.'},
+  {id:3, desc:'Verificar ausencia de tensión antes de desmontar un circuito trifásico. El interruptor OFF no basta.'},
+  {id:4, desc:'Identificar y corregir falsos contactos en un circuito RLC antes de energizar.'},
+  {id:5, desc:'Calcular y ajustar un reóstato para controlar la corriente dentro del límite de 3.5 A.'},
+];
+
+// ═══════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════
+function showLanding() {
+  document.getElementById('landing').style.display = 'block';
+  document.getElementById('sim').style.display = 'none';
+  document.getElementById('completion').style.display = 'none';
+  renderCards();
+}
+
+function renderCards() {
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+  const badges = ['b-red','b-red','b-red','b-amber','b-blue'];
+  CARD_META.forEach((m, i) => {
+    const sc = SCENARIOS[m.id];
+    const done = state.completed.has(m.id);
+    const card = document.createElement('div');
+    card.className = 'card' + (done ? ' done' : '');
+    card.innerHTML = `
+      <span class="badge ${sc.badgeClass}">${sc.badge}</span>
+      <div class="card-num">Escenario ${m.id} de 5</div>
+      <h3>${sc.title}</h3>
+      <p>${m.desc}</p>
+    `;
+    card.onclick = () => startScenario(m.id);
+    grid.appendChild(card);
+  });
+  const n = state.completed.size;
+  document.getElementById('pfill').style.width = (n/5*100)+'%';
+  document.getElementById('pscore').textContent = n + ' / 5 escenarios';
+}
+
+function startScenario(id) {
+  state.currentId = id;
+  state.currentStage = 0;
+  state.stageWrong = 0;
+
+  const sc = SCENARIOS[id];
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('sim').style.display = 'block';
+  document.getElementById('completion').style.display = 'none';
+
+  document.getElementById('sim-title').textContent = sc.title;
+  const badgeEl = document.getElementById('sim-badge');
+  badgeEl.textContent = sc.badge;
+  badgeEl.className = 'sim-badge badge ' + sc.badgeClass;
+  document.getElementById('obj-text').textContent = sc.objective;
+
+  // Build steps list
+  const stepsList = document.getElementById('steps-list');
+  stepsList.innerHTML = '';
+  sc.steps.forEach((s, i) => {
+    const li = document.createElement('li');
+    li.id = `step-${i}`;
+    li.innerHTML = `<span class="dot">${i+1}</span><span>${s}</span>`;
+    stepsList.appendChild(li);
+  });
+
+  sc.buildCircuit(document.getElementById('circuit-wrap'));
+  renderStage(id, 0);
+}
+
+function renderStage(id, stageIdx) {
+  const sc = SCENARIOS[id];
+  const stage = sc.stages[stageIdx];
+  state.currentStage = stageIdx;
+  state.stageWrong = 0;
+
+  // Update steps
+  sc.stages.forEach((_, i) => {
+    const li = document.getElementById(`step-${i}`);
+    if (!li) return;
+    li.className = i < stageIdx ? 'done' : i === stageIdx ? 'active' : '';
+  });
+
+  document.getElementById('q-lbl').textContent = `Etapa ${stageIdx + 1} de ${sc.stages.length} · ${stage.label}`;
+  document.getElementById('stage-ctx').textContent = stage.context || '';
+  document.getElementById('stage-q').textContent = stage.question || '';
+  document.getElementById('fb').className = 'fb';
+  document.getElementById('fb').innerHTML = '';
+  document.getElementById('next-btn').className = 'next-btn';
+
+  const opts = document.getElementById('opts');
+  opts.innerHTML = '';
+
+  // ── S2 Stage 0: dial del multímetro clickeable en SVG ──
+  if (id === 2 && stageIdx === 0) {
+    const hint = document.createElement('p');
+    hint.className = 'dial-hint';
+    hint.innerHTML = 'Haz clic directamente en el <strong style="color:var(--text)">selector del multímetro</strong> para elegir la función correcta.';
+    opts.appendChild(hint);
+    setupDialClicks(id, stageIdx);
+    return;
+  }
+
+  // ── S4 Stage 0: conectores interactivos en SVG ──
+  if (stage.isConnectorStage) {
+    sc._fixedIds = new Set();
+    const msg = document.createElement('div');
+    msg.className = 'conn-msg';
+    msg.innerHTML = `Haz clic en los conectores <span style="color:var(--amber);font-weight:600">ámbar parpadeantes</span> del circuito para apretarlos.<br><span class="conn-counter" id="conn-count">3 conectores flojos</span>`;
+    opts.appendChild(msg);
+
+    document.querySelectorAll('.conn.loose').forEach(g => {
+      g.onclick = () => {
+        if (g.classList.contains('fixed')) return;
+        g.className = 'conn fixed';
+        const circ = g.querySelector('circle');
+        circ.setAttribute('fill','var(--green)');
+        circ.setAttribute('stroke','var(--green)');
+        sc._fixedIds.add(g.id);
+        updateConnectorStatus(id, stageIdx);
+      };
+    });
+    updateConnectorStatus(id, stageIdx);
+    return;
+  }
+
+  // ── Slider stage (S5 step 1) ──
+  if (stage.isSliderStage) {
+    const sliderBox = document.createElement('div');
+    sliderBox.className = 'slider-wrap';
+    sliderBox.innerHTML = `
+      <label>Ajusta el reóstato: R_var = <span id="sl-val">6.0</span> Ω</label>
+      <input type="range" id="rheo-slider" min="0" max="20" step="0.5" value="6">
+      <div class="meter-row">
+        <span>Corriente calculada</span>
+        <span class="meter-val" id="sl-current">2.00 A</span>
+        <span class="meter-unit">I = 24/(R_var + 6)</span>
+      </div>
+      <div class="safe-bar"><div class="safe-fill" id="safe-fill" style="width:57%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:.2rem">
+        <span style="font-size:.75rem;color:var(--muted)">0 A</span>
+        <span style="font-size:.75rem;color:var(--amber)">3.5 A max</span>
+        <span style="font-size:.75rem;color:var(--muted)">4 A</span>
+      </div>
+    `;
+    opts.appendChild(sliderBox);
+    const slider = sliderBox.querySelector('#rheo-slider');
+    slider.addEventListener('input', () => {
+      const v = slider.value;
+      document.getElementById('sl-val').textContent = parseFloat(v).toFixed(1);
+      const I = 24 / (parseFloat(v) + 6);
+      const cur = document.getElementById('sl-current');
+      cur.textContent = I.toFixed(2) + ' A';
+      cur.className = 'meter-val' + (I > 3.5 ? ' danger' : '');
+      const pct = Math.min(100, (I/4)*100);
+      const sf = document.getElementById('safe-fill');
+      sf.style.width = pct + '%';
+      sf.className = 'safe-fill' + (I > 3.5 ? ' over' : '');
+      sc.updateSlider(v);
+    });
+    sc.updateSlider('6');
+  }
+
+  // ── Opciones con letras neutras A / B / C ──
+  stage.options.forEach((opt, oi) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    const letter = String.fromCharCode(65 + oi);
+    btn.innerHTML = `<span class="opt-key">${letter}</span><span>${opt.label}</span>`;
+    btn.onclick = () => handleOption(id, stageIdx, oi, btn);
+    opts.appendChild(btn);
+  });
+}
+
+function updateConnectorStatus(id, stageIdx) {
+  const sc = SCENARIOS[id];
+  const remaining = sc._looseIds.size - sc._fixedIds.size;
+  const counter = document.getElementById('conn-count');
+  const fb = document.getElementById('fb');
+  if (counter) {
+    counter.textContent = remaining > 0
+      ? `${remaining} conector${remaining > 1 ? 'es' : ''} flojo${remaining > 1 ? 's' : ''}`
+      : '✓ Todos los conectores firmes';
+    counter.style.color = remaining > 0 ? 'var(--amber)' : 'var(--green)';
+  }
+  if (remaining === 0) {
+    fb.innerHTML = '<strong>¡Todos los conectores apretados!</strong> El circuito está listo. Procede a energizar.';
+    fb.className = 'fb ok show';
+    // Auto-show proceed button (correct option is index 1)
+    const nextBtn = document.getElementById('next-btn');
+    nextBtn.textContent = 'Energizar circuito →';
+    nextBtn.className = 'next-btn show';
+    nextBtn.onclick = () => {
+      const stage = sc.stages[stageIdx];
+      const correctOpt = stage.options.find(o => o.correct);
+      if (correctOpt) {
+        fb.innerHTML = correctOpt.fb;
+        fb.className = 'fb ok show';
+        if (correctOpt.effect) correctOpt.effect();
+      }
+      const li = document.getElementById(`step-${stageIdx}`);
+      if (li) li.className = 'done';
+      nextBtn.textContent = 'Siguiente etapa →';
+      nextBtn.onclick = () => {
+        document.getElementById('circuit-wrap').classList.remove('danger-bg');
+        renderStage(id, stageIdx + 1);
+      };
+    };
+  }
+}
+
+// ── SVG Dial interaction (Scenario 2 Stage 0) ──
+function setupDialClicks(id, stageIdx) {
+  // Map SVG dial IDs → option indices in stage.options
+  const dialToOpt = { 'd-vdc': 0, 'd-adc': 1, 'd-ohm': 2 };
+  const dialExtra = {
+    'd-vac': '<strong>V AC (≈) es para corriente alterna.</strong> Esta fuente es 15 V DC. Necesitas la posición <strong>V DC (⎓)</strong>.',
+    'd-off': '<strong>OFF apaga el instrumento.</strong> Selecciona una función de medición activa.'
+  };
+  document.querySelectorAll('.dial-zone').forEach(g => {
+    g.style.cursor = 'pointer';
+    g.onclick = () => {
+      const dialId = g.id;
+      if (dialToOpt[dialId] !== undefined) {
+        handleDialClick(id, stageIdx, dialToOpt[dialId], g);
+      } else if (dialExtra[dialId]) {
+        const fb = document.getElementById('fb');
+        fb.innerHTML = dialExtra[dialId];
+        fb.className = 'fb warn show';
+        const circ = g.querySelector('circle');
+        const prev = circ.getAttribute('fill') || '#1a2a3a';
+        circ.setAttribute('fill', '#2a1f00');
+        circ.setAttribute('stroke', 'var(--amber)');
+        if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
+        state.wrongAttempts[id]++;
+        setTimeout(() => {
+          circ.setAttribute('fill', prev);
+          circ.removeAttribute('stroke');
+        }, 1000);
+      }
+    };
+  });
+}
+
+function handleDialClick(id, stageIdx, optIdx, dialEl) {
+  const sc = SCENARIOS[id];
+  const stage = sc.stages[stageIdx];
+  const opt = stage.options[optIdx];
+  // Disable all dials while feedback is shown
+  document.querySelectorAll('.dial-zone').forEach(g => { g.onclick = null; g.style.cursor = 'default'; });
+  const circ = dialEl.querySelector('circle');
+  const fb = document.getElementById('fb');
+  if (opt.correct) {
+    circ.setAttribute('fill', 'var(--green-dim)');
+    circ.setAttribute('stroke', 'var(--green)');
+    fb.innerHTML = opt.fb;
+    fb.className = 'fb ok show';
+    if (opt.effect) opt.effect();
+    const li = document.getElementById(`step-${stageIdx}`);
+    if (li) li.className = 'done';
+    const nextBtn = document.getElementById('next-btn');
+    const isLast = stageIdx >= sc.stages.length - 1;
+    nextBtn.className = 'next-btn show';
+    if (isLast) {
+      nextBtn.textContent = '✓ Completar escenario';
+      nextBtn.onclick = () => completeScenario(id);
+    } else {
+      nextBtn.textContent = 'Siguiente etapa →';
+      nextBtn.onclick = () => {
+        document.getElementById('circuit-wrap').classList.remove('danger-bg');
+        renderStage(id, stageIdx + 1);
+      };
+    }
+  } else {
+    circ.setAttribute('fill', 'var(--red-dim)');
+    circ.setAttribute('stroke', 'var(--red)');
+    fb.innerHTML = opt.fb;
+    fb.className = 'fb err show';
+    if (opt.effect) opt.effect();
+    if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
+    state.wrongAttempts[id]++;
+    setTimeout(() => {
+      circ.setAttribute('fill', '#1a2a3a');
+      circ.removeAttribute('stroke');
+      document.getElementById('circuit-wrap').classList.remove('danger-bg');
+      setupDialClicks(id, stageIdx); // re-register handlers
+    }, 1400);
+  }
+}
+
+function handleOption(id, stageIdx, optIdx, btn) {
+  const sc = SCENARIOS[id];
+  const stage = sc.stages[stageIdx];
+  const opt = stage.options[optIdx];
+
+  // Connector stage special check
+  if (opt.checkLoose !== undefined) {
+    const remaining = sc._looseIds.size - (sc._fixedIds ? sc._fixedIds.size : 0);
+    if (remaining > 0) {
+      btn.className = 'opt wrong';
+      const fb = document.getElementById('fb');
+      fb.innerHTML = `<strong>Quedan ${remaining} conector(es) flojos.</strong> Identifícalos (ámbar parpadeante) y haz clic para apretarlos primero.`;
+      fb.className = 'fb err show';
+      setTimeout(() => { btn.className = 'opt'; }, 800);
+      return;
+    }
+  }
+
+  // Slider stage: must be in target range
+  if (opt.requiresTarget) {
+    const I = 24 / (sc._rVar + 6);
+    if (I < 1.9 || I > 2.1) {
+      btn.className = 'opt wrong';
+      const fb = document.getElementById('fb');
+      fb.innerHTML = `<strong>La corriente actual es ${I.toFixed(2)} A.</strong> Necesitas ajustar el reóstato para obtener exactamente 2.0 A (±0.1 A) antes de energizar. Pista: R_var = (24/2) − 6 = 6 Ω.`;
+      fb.className = 'fb err show';
+      setTimeout(() => { btn.className = 'opt'; }, 800);
+      return;
+    }
+  }
+
+  // Connector stage: must have fixed all
+  if (opt.requiresFixed) {
+    const sc4 = SCENARIOS[id];
+    const remaining = sc4._looseIds.size - (sc4._fixedIds ? sc4._fixedIds.size : 0);
+    if (remaining > 0) {
+      btn.className = 'opt wrong';
+      const fb = document.getElementById('fb');
+      fb.innerHTML = `<strong>Aún hay ${remaining} conector(es) flojos.</strong> Búscalos en el circuito (ámbar parpadeante).`;
+      fb.className = 'fb err show';
+      setTimeout(() => { btn.className = 'opt'; }, 800);
+      return;
+    }
+  }
+
+  // Disable all buttons
+  document.querySelectorAll('#opts .opt').forEach(b => b.disabled = true);
+
+  const fb = document.getElementById('fb');
+
+  if (opt.correct) {
+    btn.className = 'opt correct';
+    fb.innerHTML = opt.fb;
+    fb.className = 'fb ok show';
+    if (opt.effect) opt.effect();
+    // Mark step done
+    const li = document.getElementById(`step-${stageIdx}`);
+    if (li) li.className = 'done';
+    // Next stage or complete
+    const nextBtn = document.getElementById('next-btn');
+    const isLast = stageIdx >= sc.stages.length - 1;
+    nextBtn.className = 'next-btn show';
+    if (isLast) {
+      nextBtn.textContent = '✓ Completar escenario';
+      nextBtn.onclick = () => completeScenario(id);
+    } else {
+      nextBtn.textContent = `Siguiente etapa →`;
+      nextBtn.onclick = () => {
+        document.getElementById('circuit-wrap').classList.remove('danger-bg');
+        renderStage(id, stageIdx + 1);
+      };
+    }
+  } else {
+    btn.className = 'opt wrong';
+    fb.innerHTML = opt.fb;
+    fb.className = 'fb err show';
+    if (opt.effect) opt.effect();
+    state.stageWrong++;
+    if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
+    state.wrongAttempts[id]++;
+    setTimeout(() => {
+      btn.className = 'opt';
+      document.querySelectorAll('#opts .opt').forEach(b => b.disabled = false);
+    }, 1000);
+  }
+}
+
+function completeScenario(id) {
+  state.completed.add(id);
+  const wrong = state.wrongAttempts[id] || 0;
+  const total = state.completed.size;
+
+  if (total >= 5) {
+    showCompletion();
+  } else {
+    showLanding();
+  }
+}
+
+function showCompletion() {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('sim').style.display = 'none';
+  document.getElementById('completion').style.display = 'block';
+
+  const totalWrong = Object.values(state.wrongAttempts).reduce((a,b)=>a+b,0);
+  const pct = Math.max(0, 100 - totalWrong * 5);
+  document.getElementById('comp-score').textContent = pct + '%';
+
+  let grade, msg;
+  if (pct >= 90) {
+    grade = '¡Desempeño excelente!';
+    msg = 'Dominaste todos los escenarios con errores mínimos. Estás preparado para trabajar con seguridad en el laboratorio de Convertidores Eléctricos. Recuerda: la norma no es burocracia, es la razón por la que sigues aquí.';
+  } else if (pct >= 70) {
+    grade = 'Buen desempeño';
+    msg = 'Completaste todos los escenarios. Revisa los errores que cometiste: los escenarios de alto riesgo (amperímetro, escala, falso cero) son los que más daños generan en la práctica real.';
+  } else {
+    grade = 'Necesita refuerzo';
+    msg = 'Completaste los escenarios pero con varios errores. Te recomendamos repasar las normas del laboratorio y repetir los escenarios de mayor riesgo antes de la próxima práctica.';
+  }
+  document.getElementById('comp-title').textContent = grade;
+  document.getElementById('comp-msg').textContent = msg;
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+showLanding();
+</script>
+</body>
+</html>

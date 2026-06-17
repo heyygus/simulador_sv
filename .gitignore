@@ -1,0 +1,9 @@
+# Claude Code
+.claude/
+
+# PDFs y documentos de trabajo (no van al repo público)
+*.pdf
+
+# Sistema
+Thumbs.db
+.DS_Store

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Pre-Encuesta — Lab. Convertidores Eléctricos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F7F6F2;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE9;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.15);
+    --text: #1A1916;
+    --text-muted: #6B6A65;
+    --text-faint: #9E9D98;
+    --accent: #1D3557;
+    --accent-light: #E8EDF3;
+    --red: #C0392B;
+    --red-bg: #FDF0EE;
+    --amber: #B7670A;
+    --amber-bg: #FDF6EC;
+    --green: #1E7A4B;
+    --green-bg: #EDF7F2;
+    --blue: #185FA5;
+    --blue-bg: #EAF2FB;
+    --r: 8px;
+    --rl: 12px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 0;
+  }
+
+  /* ── COVER STRIP ── */
+  .cover {
+    background: var(--accent);
+    color: #fff;
+    padding: 2.5rem 3rem 2rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+  }
+  .cover-left { flex: 1; }
+  .cover-eyebrow {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.12em;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .cover-title {
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .cover-sub { font-size: 13px; color: rgba(255,255,255,0.65); }
+  .cover-badges { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.8);
+    white-space: nowrap;
+  }
+
+  /* ── LAYOUT ── */
+  .page { max-width: 1080px; margin: 0 auto; padding: 2.5rem 2rem; }
+
+  .section { margin-bottom: 2.5rem; }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 1rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+  .section-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); }
+
+  /* ── METRIC CARDS ── */
+  .metric-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    padding: 1rem;
+  }
+  .metric-val { font-size: 28px; font-weight: 600; color: var(--accent); line-height: 1; font-family: 'DM Mono', monospace; }
+  .metric-lbl { font-size: 11px; color: var(--text-muted); margin-top: 5px; line-height: 1.4; }
+
+  /* ── FINDING CARDS ── */
+  .finding-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .finding {
+    border-radius: var(--rl);
+    padding: 1rem 1.25rem;
+    border-left: 3px solid transparent;
+  }
+  .finding-head { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+  .finding p { font-size: 13px; line-height: 1.6; }
+
+  .f-red { background: var(--red-bg); border-color: var(--red); }
+  .f-red .finding-head { color: var(--red); }
+  .f-red p { color: #7B2318; }
+
+  .f-amber { background: var(--amber-bg); border-color: var(--amber); }
+  .f-amber .finding-head { color: var(--amber); }
+  .f-amber p { color: #6E3C06; }
+
+  .f-green { background: var(--green-bg); border-color: var(--green); }
+  .f-green .finding-head { color: var(--green); }
+  .f-green p { color: #154D2E; }
+
+  /* ── Q NAVIGATION ── */
+  .q-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
+  .q-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .q-btn:hover { background: var(--accent-light); border-color: var(--blue); color: var(--blue); }
+  .q-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .q-panel { display: none; }
+  .q-panel.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--rl);
+    padding: 1.25rem 1.5rem;
+  }
+  .card-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); margin-bottom: 14px; font-family: 'DM Mono', monospace; }
+
+  /* ── BAR ROWS ── */
+  .bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+  .bar-label { flex: 0 0 220px; font-size: 12.5px; color: var(--text-muted); text-align: right; line-height: 1.35; }
+  .bar-track { flex: 1; background: var(--surface2); border-radius: 4px; height: 13px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-pct { flex: 0 0 38px; font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500; color: var(--text); }
+  .bar-note { font-size: 11.5px; color: var(--text-faint); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); font-style: italic; }
+
+  /* ── TREND LIST ── */
+  .trend-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; line-height: 1.55; }
+  .trend-item:last-child { border-bottom: none; }
+  .trend-dot { flex-shrink: 0; width: 9px; height: 9px; border-radius: 50%; margin-top: 5px; }
+  .trend-item strong { font-weight: 500; color: var(--text); }
+  .trend-item span { color: var(--text-muted); }
+
+  /* ── RADAR ── */
+  .chart-wrap { position: relative; width: 100%; height: 300px; }
+
+  /* ── TWO-COL BOTTOM ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+  /* ── FOOTER ── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-faint);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; }
+    .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .finding { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .q-nav { display: none; }
+    .q-panel { display: block !important; margin-bottom: 1.5rem; }
+    .page { padding: 1.5rem; }
+    .metric-grid { grid-template-columns: repeat(3, 1fr); }
+    .finding-grid, .two-col { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 700px) {
+    .metric-grid { grid-template-columns: repeat(3, 1fr); }
+    .finding-grid, .two-col { grid-template-columns: 1fr; }
+    .bar-label { flex: 0 0 140px; font-size: 11px; }
+    .cover { flex-direction: column; align-items: flex-start; }
+    .page { padding: 1.25rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="cover-left">
+    <div class="cover-eyebrow">UNEXPO · Servicio Comunitario · Departamento de Ingeniería de Sistemas</div>
+    <div class="cover-title">Dashboard de análisis<br>Pre-Encuesta</div>
+    <div class="cover-sub">Laboratorio de Convertidores Eléctricos · Código 41151 · Ing. Adrián Castillo M.</div>
+  </div>
+  <div class="cover-badges">
+    <div class="badge">7 estudiantes</div>
+    <div class="badge">8 preguntas abiertas</div>
+    <div class="badge">4 áreas de riesgo</div>
+    <div class="badge">Abr 2026</div>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- MÉTRICAS GLOBALES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-title">Indicadores globales</span>
+    </div>
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-val">7</div><div class="metric-lbl">Estudiantes encuestados</div></div>
+      <div class="metric"><div class="metric-val">8</div><div class="metric-lbl">Preguntas abiertas cubiertas</div></div>
+      <div class="metric"><div class="metric-val">4</div><div class="metric-lbl">Áreas de riesgo detectadas</div></div>
+      <div class="metric"><div class="metric-val">71%</div><div class="metric-lbl">Mencionan bajar voltaje antes de cambios</div></div>
+      <div class="metric"><div class="metric-val">57%</div><div class="metric-lbl">Desconfianza inicial en cables</div></div>
+      <div class="metric"><div class="metric-val">100%</div><div class="metric-lbl">Conocen la acción correcta ante fallas</div></div>
+    </div>
+  </div>
+
+  <!-- HALLAZGOS PRINCIPALES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-title">Áreas de riesgo y fortalezas identificadas</span>
+    </div>
+    <div class="finding-grid">
+      <div class="finding f-red">
+        <div class="finding-head">Riesgo alto</div>
+        <p>Medición de corriente con escala incorrecta: el error más frecuente y de mayor impacto. Varios estudiantes lo mencionan como la situación de mayor estrés. Un multímetro en escala de corriente midiendo voltaje puede destruir el instrumento y generar un arco.</p>
+      </div>
+      <div class="finding f-amber">
+        <div class="finding-head">Riesgo medio-alto</div>
+        <p>Presión de tiempo vs. seguridad: un estudiante admite hacer cambios de conexión sin des-energizar en "casos puntuales". Este comportamiento, aunque minoritario, representa el riesgo de incidente más probable en el laboratorio.</p>
+      </div>
+      <div class="finding f-amber">
+        <div class="finding-head">Riesgo medio</div>
+        <p>Verificación de cables solo visual, no técnica: ningún estudiante menciona medir continuidad con multímetro antes de usar un cable. La confianza es estética ("se ve bien") no instrumental. Cables deteriorados pueden normalizarse.</p>
+      </div>
+      <div class="finding f-green">
+        <div class="finding-head">Fortaleza consolidada</div>
+        <p>El 100% sabe que ante una anomalía lo primero es cortar la alimentación o reducir el voltaje. El protocolo básico de emergencia está interiorizado. Esta fortaleza es la base positiva sobre la que construir el árbol de decisiones.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANÁLISIS POR PREGUNTA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-title">Análisis por pregunta</span>
+    </div>
+    <div class="q-nav" id="qnav">
+      <button class="q-btn active" data-q="q1">P1 · Energizar banco</button>
+      <button class="q-btn" data-q="q2">P2 · Reconfigurar circuito</button>
+      <button class="q-btn" data-q="q3">P3 · Mayor tensión</button>
+      <button class="q-btn" data-q="q4">P4 · Verificar componentes</button>
+      <button class="q-btn" data-q="q5">P5 · Controles bajo carga</button>
+      <button class="q-btn" data-q="q6">P6 · Anomalía en práctica</button>
+      <button class="q-btn" data-q="q7">P7 · Material conductor</button>
+      <button class="q-btn" data-q="q8">P8 · Ruidos y olores</button>
+    </div>
+
+    <div id="q1" class="q-panel card active">
+      <div class="card-label">P1 — Al energizar el banco, ¿qué elementos requieren mayor atención?</div>
+      <div class="bar-row"><div class="bar-label">Perilla de voltaje (verificar en 0)</div><div class="bar-track"><div class="bar-fill" style="width:71%;background:#C0392B;"></div></div><div class="bar-pct">71%</div></div>
+      <div class="bar-row"><div class="bar-label">Contactor / breakers / switches</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#E67E22;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Revisión general del banco y conexiones</div><div class="bar-track"><div class="bar-fill" style="width:43%;background:#185FA5;"></div></div><div class="bar-pct">43%</div></div>
+      <div class="bar-row"><div class="bar-label">Selectores de línea (AC/DC regulable)</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#185FA5;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-note">Brecha: la mayoría identifica la perilla como crítica, pero no todos incluyen la verificación previa de conexiones como paso obligatorio independiente antes de energizar.</div>
+    </div>
+
+    <div id="q2" class="q-panel card">
+      <div class="card-label">P2 — Reconfigurar circuito: ¿procedimiento habitual antes de cambiar conexiones?</div>
+      <div class="bar-row"><div class="bar-label">Bajar voltaje a 0 antes de los cambios</div><div class="bar-track"><div class="bar-fill" style="width:86%;background:#1E7A4B;"></div></div><div class="bar-pct">86%</div></div>
+      <div class="bar-row"><div class="bar-label">Desconectar / abrir interruptor principal</div><div class="bar-track"><div class="bar-fill" style="width:71%;background:#1E7A4B;"></div></div><div class="bar-pct">71%</div></div>
+      <div class="bar-row"><div class="bar-label">Revisar esquema antes de reenergizar</div><div class="bar-track"><div class="bar-fill" style="width:43%;background:#185FA5;"></div></div><div class="bar-pct">43%</div></div>
+      <div class="bar-row"><div class="bar-label">Admite excepciones "en casos puntuales"</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:#C0392B;"></div></div><div class="bar-pct">14%</div></div>
+      <div class="bar-note">Hallazgo crítico: 1/7 estudiantes admite hacer cambios sin des-energizar en situaciones específicas. Este 14% representa el mayor riesgo de incidente real en la práctica.</div>
+    </div>
+
+    <div id="q3" class="q-panel card">
+      <div class="card-label">P3 — ¿Qué situación genera mayor tensión o nerviosismo?</div>
+      <div class="bar-row"><div class="bar-label">Medir corriente con tester (escala incorrecta)</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#C0392B;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Subir voltaje a niveles altos</div><div class="bar-track"><div class="bar-fill" style="width:43%;background:#E67E22;"></div></div><div class="bar-pct">43%</div></div>
+      <div class="bar-row"><div class="bar-label">Ensayos de vacío / corto circuito</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#E67E22;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Comprobación de conexiones bajo carga</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#E67E22;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Sonidos inesperados de componentes</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:#185FA5;"></div></div><div class="bar-pct">14%</div></div>
+      <div class="bar-note">La medición de corriente es el punto de mayor estrés reportado. Esto valida que las escalas del multímetro y la conexión en serie deben ser el tema central del árbol de decisiones.</div>
+    </div>
+
+    <div id="q4" class="q-panel card">
+      <div class="card-label">P4 — ¿Cómo verificas que los componentes son adecuados para la práctica?</div>
+      <div class="bar-row"><div class="bar-label">Medir con multímetro</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#1E7A4B;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Revisar valor nominal en etiqueta</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#1E7A4B;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Calcular previamente y comparar</div><div class="bar-track"><div class="bar-fill" style="width:43%;background:#185FA5;"></div></div><div class="bar-pct">43%</div></div>
+      <div class="bar-row"><div class="bar-label">Consultar al docente ante dudas</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#185FA5;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Respuesta vaga ("se mide todo")</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:#C0392B;"></div></div><div class="bar-pct">14%</div></div>
+      <div class="bar-note">Brecha detectada: los estudiantes verifican el valor resistivo pero no la capacidad de potencia. Resistencias de bajo wattaje usadas en circuitos de alta potencia es un riesgo no verbalizado.</div>
+    </div>
+
+    <div id="q5" class="q-panel card">
+      <div class="card-label">P5 — Percepción sobre los controles del banco bajo carga</div>
+      <div class="bar-row"><div class="bar-label">Funcionan bien / de forma aceptable</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#1E7A4B;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Respuesta inmediata y satisfactoria</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#1E7A4B;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Perillas duras / con juego mecánico</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#E67E22;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Banco móvil con problemas en selectores</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:#E67E22;"></div></div><div class="bar-pct">14%</div></div>
+      <div class="bar-note">El banco móvil concentra más incidencias. Se detecta normalización del mal funcionamiento: los estudiantes no siempre reportan perillas defectuosas porque asumen que "así son".</div>
+    </div>
+
+    <div id="q6" class="q-panel card">
+      <div class="card-label">P6 — Reacción inmediata ante anomalías, antes de llamar al profesor</div>
+      <div class="bar-row"><div class="bar-label">Bajar voltaje a 0 / apagar banco</div><div class="bar-track"><div class="bar-fill" style="width:100%;background:#1E7A4B;"></div></div><div class="bar-pct">100%</div></div>
+      <div class="bar-row"><div class="bar-label">Verificar conexiones del circuito</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#185FA5;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Presionar botón de emergencia (extremo)</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#185FA5;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Verificar instrumentos de medición conectados</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#185FA5;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-note">Fortaleza principal del grupo: el 100% conoce y verbaliza la respuesta correcta. El riesgo no está en el conocimiento sino en la ejecución bajo presión de tiempo o presión del grupo.</div>
+    </div>
+
+    <div id="q7" class="q-panel card">
+      <div class="card-label">P7 — Nivel de confianza en el material conductor entregado</div>
+      <div class="bar-row"><div class="bar-label">Confianza alta o muy alta</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#1E7A4B;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Desconfianza visual (no por fallas reales)</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#E67E22;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Confianza intermedia (cables &lt; bananas)</div><div class="bar-track"><div class="bar-fill" style="width:14%;background:#E67E22;"></div></div><div class="bar-pct">14%</div></div>
+      <div class="bar-note">Paradoja: los cables generan desconfianza por apariencia pero ningún estudiante reportó fallas de continuidad reales. Ninguno menciona medir continuidad antes de usar. La verificación no ocurre.</div>
+    </div>
+
+    <div id="q8" class="q-panel card">
+      <div class="card-label">P8 — Ruidos, olores o calor considerados "normales" en el laboratorio</div>
+      <div class="bar-row"><div class="bar-label">Ruido de motores y vibración de mesas</div><div class="bar-track"><div class="bar-fill" style="width:71%;background:#185FA5;"></div></div><div class="bar-pct">71%</div></div>
+      <div class="bar-row"><div class="bar-label">Calor en resistencias y bobinas</div><div class="bar-track"><div class="bar-fill" style="width:57%;background:#E67E22;"></div></div><div class="bar-pct">57%</div></div>
+      <div class="bar-row"><div class="bar-label">Olor a reóstato o bobina caliente</div><div class="bar-track"><div class="bar-fill" style="width:43%;background:#E67E22;"></div></div><div class="bar-pct">43%</div></div>
+      <div class="bar-row"><div class="bar-label">Olor a cable quemado (señalado como NO normal)</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#C0392B;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-row"><div class="bar-label">Ruido del transformador bajo alta corriente</div><div class="bar-track"><div class="bar-fill" style="width:29%;background:#185FA5;"></div></div><div class="bar-pct">29%</div></div>
+      <div class="bar-note">Hallazgo positivo: al menos 2 estudiantes distinguen explícitamente entre olores normales y señal de alarma. Sin embargo, existe ambigüedad sobre qué nivel de calor en resistencias es aceptable vs. peligroso.</div>
+    </div>
+  </div>
+
+  <!-- RADAR + TEMAS CRÍTICOS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-title">Mapa de conocimiento y brechas</span>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-label">Nivel detectado por dimensión</div>
+        <div class="chart-wrap">
+          <canvas id="radarChart" role="img" aria-label="Radar de nivel de conocimiento por dimensión. Respuesta de emergencia 90%, Protocolo de apagado 75%, Verificación de componentes 60%, Secuencia de reconexión 55%, Medición de corriente 45%, Verificación de cables 40%.">Niveles: Emergencias 90, Apagado 75, Componentes 60, Reconexión 55, Corriente 45, Cables 40.</canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-label">Temas críticos para los siguientes entregables</div>
+        <div class="trend-item">
+          <div class="trend-dot" style="background:#C0392B;"></div>
+          <div><strong>Medición de corriente con multímetro</strong> <span>— Escala, conexión en serie, límites del instrumento. Tema central.</span></div>
+        </div>
+        <div class="trend-item">
+          <div class="trend-dot" style="background:#C0392B;"></div>
+          <div><strong>Procedimiento de des-energización</strong> <span>— Eliminar las "excepciones puntuales" con protocolo explícito y verificable.</span></div>
+        </div>
+        <div class="trend-item">
+          <div class="trend-dot" style="background:#E67E22;"></div>
+          <div><strong>Componentes: valor vs. capacidad de potencia</strong> <span>— Brecha entre conocer la resistencia y verificar el wattaje nominal.</span></div>
+        </div>
+        <div class="trend-item">
+          <div class="trend-dot" style="background:#E67E22;"></div>
+          <div><strong>Verificación activa de cables</strong> <span>— Ninguno mide continuidad. La confianza es visual, no instrumental.</span></div>
+        </div>
+        <div class="trend-item">
+          <div class="trend-dot" style="background:#185FA5;"></div>
+          <div><strong>Secuencia completa de apagado</strong> <span>— Voltaje a 0 → interruptor → selector a 0 → desmontar. Se verbaliza incompleta.</span></div>
+        </div>
+        <div class="trend-item" style="border-bottom:none;">
+          <div class="trend-dot" style="background:#1E7A4B;"></div>
+          <div><strong>Respuesta de emergencia</strong> <span>— Fortaleza a mantener. Usarla como punto de partida del árbol de decisiones.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span>UNEXPO · Servicio Comunitario · Lab. Convertidores Eléctricos · Abr 2026</span>
+  <span>7 estudiantes · 8 preguntas · Análisis cualitativo y cuantitativo</span>
+</div>
+
+<script>
+  document.getElementById('qnav').addEventListener('click', function(e) {
+    var btn = e.target.closest('.q-btn');
+    if (!btn) return;
+    document.querySelectorAll('.q-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.q-panel').forEach(function(p){ p.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.q).classList.add('active');
+  });
+
+  new Chart(document.getElementById('radarChart'), {
+    type: 'radar',
+    data: {
+      labels: ['Respuesta de\nemergencia','Protocolo\nde apagado','Verificación de\ncomponentes','Secuencia de\nreconexión','Medición de\ncorriente','Verificación\nde cables'],
+      datasets: [{
+        label: 'Nivel detectado (%)',
+        data: [90, 75, 60, 55, 45, 40],
+        backgroundColor: 'rgba(28, 53, 87, 0.08)',
+        borderColor: '#1D3557',
+        pointBackgroundColor: '#1D3557',
+        pointRadius: 4,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: {
+            stepSize: 25,
+            font: { size: 10, family: 'DM Mono' },
+            color: '#9E9D98',
+            backdropColor: 'transparent',
+            callback: function(v){ return v + '%'; }
+          },
+          grid: { color: 'rgba(0,0,0,0.07)' },
+          angleLines: { color: 'rgba(0,0,0,0.07)' },
+          pointLabels: { color: '#6B6A65', font: { size: 11, family: 'DM Sans' } }
+        }
+      }
+    }
+  });
+</script>
+</body>
+</html>
