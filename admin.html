@@ -972,6 +972,27 @@ const state = {
 // ── AUTH STATE LISTENER ────────────────────────────────────────
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session && session.user) {
+    const isAdmin = session.user.user_metadata?.role === 'admin';
+
+    if (!isAdmin) {
+      // Si acaba de intentar hacer login desde este formulario, cerrar sesión
+      if (event === 'SIGNED_IN') {
+        await sb.auth.signOut();
+        const errEl = document.getElementById('auth-error');
+        if (errEl) {
+          errEl.textContent = 'Acceso denegado. Esta área es exclusiva del administrador.';
+          errEl.classList.remove('hidden');
+        }
+      } else {
+        // Sesión previa de estudiante: solo mostrar pantalla de login
+        state.user    = null;
+        state.profile = null;
+        showAuthView();
+      }
+      return;
+    }
+
+    // Usuario con rol admin confirmado
     state.user = session.user;
     await loadProfile();
     showDashboardView();
