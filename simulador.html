@@ -1244,6 +1244,15 @@ function startScenario(id) {
     stepsList.appendChild(li);
   });
 
+  // Restaurar estructura de action-box (la pantalla de resultados la reemplaza)
+  document.getElementById('action-box').innerHTML = `
+    <div class="box-lbl" id="q-lbl">Etapa</div>
+    <div class="stage-ctx" id="stage-ctx"></div>
+    <div class="stage-q" id="stage-q"></div>
+    <div class="opt-list" id="opts"></div>
+    <div class="fb" id="fb"></div>
+    <button class="next-btn" id="next-btn"></button>`;
+
   sc.buildCircuit(document.getElementById('circuit-wrap'));
   renderStage(id, 0);
 }
