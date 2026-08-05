@@ -612,6 +612,10 @@ tbody tr:hover td { background: var(--surface2); }
         <span class="nav-icon">📋</span>
         <span>Resultados</span>
       </button>
+      <button class="nav-item" id="nav-usuarios" onclick="showSection('usuarios')">
+        <span class="nav-icon">🎓</span>
+        <span>Usuarios</span>
+      </button>
     </div>
     <div class="sidebar-footer">
       <div>
@@ -907,6 +911,62 @@ tbody tr:hover td { background: var(--surface2); }
       </div>
     </section>
 
+    <!-- ── SECTION: USUARIOS REGISTRADOS ────────────────── -->
+    <section id="section-usuarios" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2>Usuarios Registrados</h2>
+          <p>Estudiantes que crearon cuenta propia en el simulador</p>
+        </div>
+        <button class="btn-secondary" onclick="loadUsers()">Actualizar</button>
+      </div>
+
+      <div class="stat-grid" style="margin-bottom:1.5rem">
+        <div class="stat-tile">
+          <div class="label">Total registrados</div>
+          <div class="value val-blue" id="usr-total">—</div>
+          <div class="sub">cuentas activas</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Con sesión completada</div>
+          <div class="value val-green" id="usr-completed">—</div>
+          <div class="sub">completaron el simulador</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">En progreso</div>
+          <div class="value val-amber" id="usr-inprogress">—</div>
+          <div class="sub">sesión abierta</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-hdr">
+          <h3>Lista de estudiantes</h3>
+          <input type="text" id="usr-search" placeholder="Buscar por nombre o expediente..."
+            oninput="filterUsers(this.value)"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.35rem .75rem;border-radius:6px;font-size:13px;font-family:inherit;outline:none;width:220px">
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Expediente</th>
+                <th>Período</th>
+                <th>Sección</th>
+                <th>Última sesión</th>
+                <th>Puntaje</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-users">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
   </main><!-- /main-content -->
 </div><!-- /dashboard-view -->
 
@@ -1054,7 +1114,7 @@ function showDashboardView() {
 }
 
 function showSection(name) {
-  const sections = ['dashboard', 'cursos', 'estudiantes', 'resultados'];
+  const sections = ['dashboard', 'cursos', 'estudiantes', 'resultados', 'usuarios'];
   sections.forEach(s => {
     document.getElementById('section-' + s).classList.add('hidden');
     document.getElementById('nav-' + s).classList.remove('active');
@@ -1067,6 +1127,7 @@ function showSection(name) {
   else if (name === 'cursos')       loadCourses();
   else if (name === 'estudiantes')  initStudentSection();
   else if (name === 'resultados')   initResultsSection();
+  else if (name === 'usuarios')     loadUsers();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
@@ -1077,46 +1138,41 @@ async function loadDashboardData() {
   document.getElementById('stat-avg').textContent       = '...';
 
   try {
-    // Get all professor's courses
-    const { data: courses, error: cErr } = await sb
-      .from('courses')
-      .select('id, active')
-      .eq('professor_id', state.user.id);
+    const isAdmin = state.profile?.role === 'admin';
 
+    // Courses count (admin sees all, professor sees own)
+    const coursesQuery = sb.from('courses').select('id, active');
+    if (!isAdmin) coursesQuery.eq('professor_id', state.user.id);
+    const { data: courses, error: cErr } = await coursesQuery;
     if (cErr) throw cErr;
 
-    const allIds    = courses.map(c => c.id);
-    const activeIds = courses.filter(c => c.active).map(c => c.id);
-
+    const activeIds = (courses || []).filter(c => c.active).map(c => c.id);
     document.getElementById('stat-courses').textContent = activeIds.length;
 
-    if (allIds.length === 0) {
-      document.getElementById('stat-students').textContent  = 0;
-      document.getElementById('stat-completed').textContent = 0;
-      document.getElementById('stat-avg').textContent       = '—';
-      renderRecentSessions([]);
-      return;
-    }
-
-    // Students count
+    // Registered students count (from profiles)
     const { count: stuCount } = await sb
-      .from('students')
+      .from('profiles')
       .select('*', { count: 'exact', head: true })
-      .in('course_id', allIds);
-
+      .eq('role', 'student');
     document.getElementById('stat-students').textContent = stuCount || 0;
 
-    // Sessions
-    const { data: sessions, error: sErr } = await sb
-      .from('sessions')
-      .select('id, status, total_score, started_at')
-      .in('course_id', allIds);
-
+    // All sessions (admin: all; professor: by course)
+    let sessQuery = sb.from('sessions').select('id, status, total_score, started_at');
+    if (!isAdmin) {
+      const allIds = (courses || []).map(c => c.id);
+      if (!allIds.length) {
+        document.getElementById('stat-completed').textContent = 0;
+        document.getElementById('stat-avg').textContent = '—';
+        renderRecentSessions([]);
+        return;
+      }
+      sessQuery = sessQuery.in('course_id', allIds);
+    }
+    const { data: sessions, error: sErr } = await sessQuery;
     if (sErr) throw sErr;
 
-    const completed = sessions.filter(s => s.status === 'completed');
+    const completed = (sessions || []).filter(s => s.status === 'completed');
     document.getElementById('stat-completed').textContent = completed.length;
-
     if (completed.length > 0) {
       const avg = completed.reduce((acc, s) => acc + (parseFloat(s.total_score) || 0), 0) / completed.length;
       document.getElementById('stat-avg').textContent = avg.toFixed(1);
@@ -1124,14 +1180,17 @@ async function loadDashboardData() {
       document.getElementById('stat-avg').textContent = '—';
     }
 
-    // Recent sessions (last 10)
-    const { data: recent, error: rErr } = await sb
+    // Recent sessions (last 10) — join profiles for student name
+    let recentQuery = sb
       .from('sessions')
-      .select('id, status, total_score, scenarios_completed, total_wrong_attempts, started_at, students(full_name), courses(name, section)')
-      .in('course_id', allIds)
+      .select('id, status, total_score, scenarios_completed, total_wrong_attempts, started_at, profiles(name, apellido), courses(name, section)')
       .order('started_at', { ascending: false })
       .limit(10);
-
+    if (!isAdmin) {
+      const allIds = (courses || []).map(c => c.id);
+      recentQuery = recentQuery.in('course_id', allIds);
+    }
+    const { data: recent, error: rErr } = await recentQuery;
     if (rErr) throw rErr;
     renderRecentSessions(recent || []);
 
@@ -1152,7 +1211,9 @@ function renderRecentSessions(sessions) {
   }
 
   tbody.innerHTML = sessions.map(s => {
-    const studentName = s.students ? escHtml(s.students.full_name) : '<span style="color:var(--muted)">Anónimo</span>';
+    const studentName = s.profiles
+      ? escHtml([s.profiles.name, s.profiles.apellido].filter(Boolean).join(' '))
+      : (s.students ? escHtml(s.students.full_name) : '<span style="color:var(--muted)">Anónimo</span>');
     const courseName  = s.courses  ? escHtml(s.courses.name + (s.courses.section ? ' - ' + s.courses.section : '')) : '—';
     const scoreHtml   = s.total_score != null ? `<span style="color:${scoreColor(s.total_score)};font-weight:700">${parseFloat(s.total_score).toFixed(1)}</span>` : '—';
     return `<tr>
@@ -1705,6 +1766,101 @@ function updateResultsSummary(sessions) {
   // Hardest scenario: find the most-attempted across all sessions
   // We do not have scenario_results aggregated here, so we approximate from total_wrong_attempts
   document.getElementById('res-hardest').textContent = '—';
+}
+
+// ── USUARIOS REGISTRADOS ───────────────────────────────────────
+let _allUsers = [];
+
+async function loadUsers() {
+  const tbody = document.getElementById('tbody-users');
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
+  document.getElementById('usr-total').textContent      = '—';
+  document.getElementById('usr-completed').textContent  = '—';
+  document.getElementById('usr-inprogress').textContent = '—';
+
+  try {
+    // Get all student profiles
+    const { data: profiles, error: pErr } = await sb
+      .from('profiles')
+      .select('id, name, apellido, expediente, periodo_academico, seccion, created_at')
+      .eq('role', 'student')
+      .order('created_at', { ascending: false });
+
+    if (pErr) throw pErr;
+
+    if (!profiles || !profiles.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎓</div><p>Ningún estudiante se ha registrado todavía.</p></div></td></tr>`;
+      document.getElementById('usr-total').textContent = 0;
+      document.getElementById('usr-completed').textContent = 0;
+      document.getElementById('usr-inprogress').textContent = 0;
+      return;
+    }
+
+    // Get latest session per profile_id
+    const profileIds = profiles.map(p => p.id);
+    const { data: sessions } = await sb
+      .from('sessions')
+      .select('profile_id, status, total_score, started_at')
+      .in('profile_id', profileIds)
+      .order('started_at', { ascending: false });
+
+    // Map: latest session per student
+    const sessionMap = {};
+    (sessions || []).forEach(s => {
+      if (!sessionMap[s.profile_id]) sessionMap[s.profile_id] = s;
+    });
+
+    // Stats
+    const completed  = Object.values(sessionMap).filter(s => s.status === 'completed').length;
+    const inProgress = Object.values(sessionMap).filter(s => s.status === 'in_progress').length;
+    document.getElementById('usr-total').textContent      = profiles.length;
+    document.getElementById('usr-completed').textContent  = completed;
+    document.getElementById('usr-inprogress').textContent = inProgress;
+
+    // Cache for filter
+    _allUsers = profiles.map(p => ({ ...p, _session: sessionMap[p.id] || null }));
+    renderUsersTable(_allUsers);
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
+    showToast('Error al cargar usuarios: ' + err.message, 'err');
+  }
+}
+
+function renderUsersTable(users) {
+  const tbody = document.getElementById('tbody-users');
+  if (!users.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🔍</div><p>No se encontraron resultados.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => {
+    const fullName = escHtml([u.name, u.apellido].filter(Boolean).join(' ')) || '—';
+    const sess     = u._session;
+    const score    = sess?.total_score != null ? parseFloat(sess.total_score) : null;
+    const scoreHtml = score != null
+      ? `<span style="color:${scoreColor(score)};font-weight:700">${score.toFixed(1)}</span>`
+      : '<span style="color:var(--muted)">—</span>';
+
+    return `<tr>
+      <td><strong>${fullName}</strong></td>
+      <td style="font-family:monospace;color:var(--muted)">${u.expediente || '—'}</td>
+      <td style="color:var(--muted)">${escHtml(u.periodo_academico || '—')}</td>
+      <td style="color:var(--muted)">${escHtml(u.seccion || '—')}</td>
+      <td style="color:var(--muted);font-size:12px">${sess ? formatDate(sess.started_at) : '—'}</td>
+      <td>${scoreHtml}</td>
+      <td>${sess ? statusBadge(sess.status) : '<span class="badge badge-muted">Sin sesión</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterUsers(q) {
+  const ql = q.toLowerCase().trim();
+  if (!ql) { renderUsersTable(_allUsers); return; }
+  renderUsersTable(_allUsers.filter(u => {
+    const name = [u.name, u.apellido].join(' ').toLowerCase();
+    return name.includes(ql) || String(u.expediente || '').includes(ql);
+  }));
 }
 
 // ── UTILITY FUNCTIONS ──────────────────────────────────────────
