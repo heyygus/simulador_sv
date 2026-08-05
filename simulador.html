@@ -45,9 +45,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .card.done{border-color:var(--green)}
 .card.done::after{content:'✓';position:absolute;top:.9rem;right:.9rem;color:var(--green);font-size:1.1rem;font-weight:700}
 .badge{display:inline-block;padding:.2rem .55rem;border-radius:20px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:.7rem}
-.b-red{background:var(--red-dim);color:var(--red)}
+.b-green{background:var(--green-dim);color:var(--green)}
 .b-amber{background:var(--amber-dim);color:var(--amber)}
-.b-blue{background:var(--blue-dim);color:var(--blue)}
+.b-red{background:var(--red-dim);color:var(--red)}
 .card-num{font-size:.75rem;color:var(--muted);margin-bottom:.2rem}
 .card h3{font-size:1rem;margin-bottom:.4rem}
 .card p{font-size:.83rem;color:var(--muted);line-height:1.5}
@@ -347,7 +347,7 @@ const SCENARIOS = {
 // ─────────────────────────────────────────
 1: {
   title: 'Amperímetro en Paralelo',
-  badge: 'Alto riesgo', badgeClass: 'b-red',
+  badge: 'Principiante', badgeClass: 'b-green',
   objective: 'Mide la corriente total del circuito RL de 12 V / 10 Ω. Elige dónde y cómo conectar el amperímetro del multímetro.',
   steps: ['Identificar los terminales del circuito', 'Elegir la conexión correcta del amperímetro', 'Verificar la lectura'],
 
@@ -495,7 +495,7 @@ const SCENARIOS = {
 // ─────────────────────────────────────────
 2: {
   title: 'Escala Incorrecta del Multímetro',
-  badge: 'Alto riesgo', badgeClass: 'b-red',
+  badge: 'Principiante', badgeClass: 'b-green',
   objective: 'Debes medir el voltaje en los bornes de una resistencia de 100 Ω en un circuito de 15 V DC. Configura el multímetro correctamente.',
   steps: ['Seleccionar la función (V / A / Ω)', 'Seleccionar el rango adecuado', 'Elegir la conexión correcta'],
 
@@ -656,7 +656,7 @@ const SCENARIOS = {
 // ─────────────────────────────────────────
 3: {
   title: 'Falso Cero — Circuito Trifásico',
-  badge: 'Riesgo severo', badgeClass: 'b-red',
+  badge: 'Avanzado', badgeClass: 'b-red',
   objective: 'Terminó la práctica trifásica. El interruptor principal aparece en OFF. Debes desmontar el circuito. ¿Cómo lo haces?',
   steps: ['Verificar estado del interruptor', 'Medir cada fase antes de tocar', 'Proceder con seguridad'],
 
@@ -812,7 +812,7 @@ const SCENARIOS = {
 // ─────────────────────────────────────────
 4: {
   title: 'Falso Contacto en Circuito RLC',
-  badge: 'Riesgo medio', badgeClass: 'b-amber',
+  badge: 'Medio', badgeClass: 'b-amber',
   objective: 'Antes de energizar el circuito RLC serie, debes inspeccionar físicamente cada conector banana. Hay conectores flojos que causarán lecturas inestables o arcos.',
   steps: ['Inspeccionar los 8 conectores del circuito', 'Apretar los que estén flojos', 'Verificar que todo esté firme y energizar'],
 
@@ -979,7 +979,7 @@ const SCENARIOS = {
 // ─────────────────────────────────────────
 5: {
   title: 'Control de Corriente con Reóstato',
-  badge: 'Práctica', badgeClass: 'b-blue',
+  badge: 'Avanzado', badgeClass: 'b-red',
   objective: 'La fuente es 24 V DC y la carga fija es 6 Ω. Ajusta el reóstato para que la corriente sea exactamente 2.0 A (±0.1 A) ANTES de energizar. Límite del banco: 3.5 A.',
   steps: ['Calcular la R necesaria para I = 2.0 A', 'Ajustar el reóstato ANTES de energizar', 'Verificar que I < 3.5 A y energizar'],
 
@@ -1191,7 +1191,6 @@ window.addEventListener('beforeunload', function(e) {
 function renderCards() {
   const grid = document.getElementById('card-grid');
   grid.innerHTML = '';
-  const badges = ['b-red','b-red','b-red','b-amber','b-blue'];
   CARD_META.forEach((m, i) => {
     const sc = SCENARIOS[m.id];
     const done = state.completed.has(m.id);
