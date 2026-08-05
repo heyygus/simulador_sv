@@ -125,13 +125,14 @@ BEGIN
 
     -- Insertar identidad de email (necesario para que el login funcione)
     INSERT INTO auth.identities (
-        id, user_id, identity_data, provider,
+        id, user_id, identity_data, provider, provider_id,
         last_sign_in_at, created_at, updated_at
     ) VALUES (
         gen_random_uuid(),
         _uid,
         jsonb_build_object('sub', _uid::text, 'email', 'admin@simlab.local'),
         'email',
+        'admin@simlab.local',
         NOW(), NOW(), NOW()
     );
 
