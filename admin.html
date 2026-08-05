@@ -612,10 +612,6 @@ tbody tr:hover td { background: var(--surface2); }
         <span class="nav-icon">📋</span>
         <span>Resultados</span>
       </button>
-      <button class="nav-item" id="nav-usuarios" onclick="showSection('usuarios')">
-        <span class="nav-icon">🎓</span>
-        <span>Usuarios</span>
-      </button>
     </div>
     <div class="sidebar-footer">
       <div>
@@ -757,69 +753,51 @@ tbody tr:hover td { background: var(--surface2); }
       <div class="page-header">
         <div>
           <h2>Estudiantes</h2>
-          <p>Gestión de estudiantes y códigos de acceso</p>
+          <p>Estudiantes registrados en el simulador</p>
         </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <button class="btn-green" onclick="printCodes()" id="btn-print-codes">Imprimir códigos</button>
-          <button class="btn-primary" onclick="toggleStudentForm()" id="btn-add-student">+ Añadir estudiante</button>
-        </div>
+        <button class="btn-secondary" onclick="loadStudentProfiles()">Actualizar</button>
       </div>
 
-      <div class="filters-row" style="margin-bottom:.85rem">
-        <div class="form-group">
-          <label for="st-course-filter">Filtrar por curso</label>
-          <select id="st-course-filter" onchange="onStudentCourseChange()">
-            <option value="">Seleccionar curso...</option>
-          </select>
+      <div class="stat-grid" style="margin-bottom:1.5rem">
+        <div class="stat-tile">
+          <div class="label">Total registrados</div>
+          <div class="value val-blue" id="est-total">—</div>
+          <div class="sub">cuentas activas</div>
         </div>
-      </div>
-
-      <div id="new-code-display" class="hidden"></div>
-
-      <div id="student-form-wrap" class="hidden">
-        <div class="inline-form">
-          <h4>Añadir estudiante</h4>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="sf-name">Nombre completo</label>
-              <input type="text" id="sf-name" placeholder="Juan Carlos Pérez">
-            </div>
-            <div class="form-group">
-              <label for="sf-cedula">Cédula</label>
-              <input type="text" id="sf-cedula" placeholder="V-12345678">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="sf-email">Correo electrónico (opcional)</label>
-              <input type="email" id="sf-email" placeholder="estudiante@email.com">
-            </div>
-            <div class="form-group">
-              <label for="sf-code">Código de acceso (dejar en blanco para generar automáticamente)</label>
-              <input type="text" id="sf-code" placeholder="AUTO" maxlength="6" style="text-transform:uppercase">
-            </div>
-          </div>
-          <div class="actions">
-            <button class="btn-primary" onclick="createStudent()">Guardar estudiante</button>
-            <button class="btn-secondary" onclick="toggleStudentForm()">Cancelar</button>
-          </div>
+        <div class="stat-tile">
+          <div class="label">Completaron el simulador</div>
+          <div class="value val-green" id="est-completed">—</div>
+          <div class="sub">5/5 escenarios</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">En progreso</div>
+          <div class="value val-amber" id="est-inprogress">—</div>
+          <div class="sub">1-4 escenarios</div>
         </div>
       </div>
 
       <div class="box">
+        <div class="box-hdr">
+          <h3>Lista de estudiantes</h3>
+          <input type="text" id="est-search" placeholder="Buscar por nombre o expediente..."
+            oninput="filterStudentProfiles(this.value)"
+            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.35rem .75rem;border-radius:6px;font-size:13px;font-family:inherit;outline:none;width:220px">
+        </div>
         <div class="tbl-wrap">
-          <table id="tbl-students">
+          <table>
             <thead>
               <tr>
-                <th>Nombre completo</th>
-                <th>Cédula</th>
-                <th>Correo</th>
-                <th>Código de acceso</th>
-                <th>Activo</th>
+                <th>Nombre</th>
+                <th>Expediente</th>
+                <th>Período</th>
+                <th>Sección</th>
+                <th>Progreso</th>
+                <th>Puntaje</th>
+                <th>Último acceso</th>
               </tr>
             </thead>
-            <tbody id="tbody-students">
-              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Selecciona un curso para ver los estudiantes.</td></tr>
+            <tbody id="tbody-est">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -911,61 +889,6 @@ tbody tr:hover td { background: var(--surface2); }
       </div>
     </section>
 
-    <!-- ── SECTION: USUARIOS REGISTRADOS ────────────────── -->
-    <section id="section-usuarios" class="hidden">
-      <div class="page-header">
-        <div>
-          <h2>Usuarios Registrados</h2>
-          <p>Estudiantes que crearon cuenta propia en el simulador</p>
-        </div>
-        <button class="btn-secondary" onclick="loadUsers()">Actualizar</button>
-      </div>
-
-      <div class="stat-grid" style="margin-bottom:1.5rem">
-        <div class="stat-tile">
-          <div class="label">Total registrados</div>
-          <div class="value val-blue" id="usr-total">—</div>
-          <div class="sub">cuentas activas</div>
-        </div>
-        <div class="stat-tile">
-          <div class="label">Con sesión completada</div>
-          <div class="value val-green" id="usr-completed">—</div>
-          <div class="sub">completaron el simulador</div>
-        </div>
-        <div class="stat-tile">
-          <div class="label">En progreso</div>
-          <div class="value val-amber" id="usr-inprogress">—</div>
-          <div class="sub">sesión abierta</div>
-        </div>
-      </div>
-
-      <div class="box">
-        <div class="box-hdr">
-          <h3>Lista de estudiantes</h3>
-          <input type="text" id="usr-search" placeholder="Buscar por nombre o expediente..."
-            oninput="filterUsers(this.value)"
-            style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:.35rem .75rem;border-radius:6px;font-size:13px;font-family:inherit;outline:none;width:220px">
-        </div>
-        <div class="tbl-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Expediente</th>
-                <th>Período</th>
-                <th>Sección</th>
-                <th>Última sesión</th>
-                <th>Puntaje</th>
-                <th>Estado</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-users">
-              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
 
   </main><!-- /main-content -->
 </div><!-- /dashboard-view -->
@@ -1114,7 +1037,7 @@ function showDashboardView() {
 }
 
 function showSection(name) {
-  const sections = ['dashboard', 'cursos', 'estudiantes', 'resultados', 'usuarios'];
+  const sections = ['dashboard', 'cursos', 'estudiantes', 'resultados'];
   sections.forEach(s => {
     document.getElementById('section-' + s).classList.add('hidden');
     document.getElementById('nav-' + s).classList.remove('active');
@@ -1125,9 +1048,8 @@ function showSection(name) {
 
   if      (name === 'dashboard')    loadDashboardData();
   else if (name === 'cursos')       loadCourses();
-  else if (name === 'estudiantes')  initStudentSection();
+  else if (name === 'estudiantes')  loadStudentProfiles();
   else if (name === 'resultados')   initResultsSection();
-  else if (name === 'usuarios')     loadUsers();
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────
@@ -1333,219 +1255,129 @@ function viewCourseStudents(courseId) {
   }
 }
 
-// ── STUDENTS ───────────────────────────────────────────────────
-async function initStudentSection() {
-  // Populate course dropdown
-  const sel = document.getElementById('st-course-filter');
-  const prevVal = state.studentCourseId || sel.value;
+// ── ESTUDIANTES (auto-registrados) ────────────────────────────
+let _allStudentProfiles = [];
 
-  // Refresh courses list if needed
-  if (!state.courses.length) {
-    const { data } = await sb
-      .from('courses')
-      .select('id, name, section, semester')
-      .eq('professor_id', state.user.id)
-      .order('created_at', { ascending: false });
-    state.courses = data || [];
-  }
-
-  sel.innerHTML = '<option value="">Seleccionar curso...</option>'
-    + state.courses.map(c =>
-        `<option value="${c.id}">${escHtml(c.name)}${c.section ? ' - ' + escHtml(c.section) : ''}${c.semester ? ' (' + escHtml(c.semester) + ')' : ''}</option>`
-      ).join('');
-
-  if (prevVal) {
-    sel.value = prevVal;
-    if (sel.value) loadStudents(sel.value);
-  }
-}
-
-function onStudentCourseChange() {
-  const courseId = document.getElementById('st-course-filter').value;
-  state.studentCourseId = courseId || null;
-  document.getElementById('new-code-display').classList.add('hidden');
-  document.getElementById('student-form-wrap').classList.add('hidden');
-  if (courseId) {
-    loadStudents(courseId);
-  } else {
-    document.getElementById('tbody-students').innerHTML =
-      `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Selecciona un curso para ver los estudiantes.</td></tr>`;
-  }
-}
-
-async function loadStudents(courseId) {
-  const tbody = document.getElementById('tbody-students');
-  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
+async function loadStudentProfiles() {
+  const tbody = document.getElementById('tbody-est');
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
+  document.getElementById('est-total').textContent      = '—';
+  document.getElementById('est-completed').textContent  = '—';
+  document.getElementById('est-inprogress').textContent = '—';
 
   try {
-    const { data, error } = await sb
-      .from('students')
-      .select('*')
-      .eq('course_id', courseId)
-      .order('full_name');
+    const { data: profiles, error: pErr } = await sb
+      .from('profiles')
+      .select('id, name, apellido, expediente, periodo_academico, seccion, created_at')
+      .eq('role', 'student')
+      .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (pErr) throw pErr;
 
-    if (!data || !data.length) {
-      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">👤</div><p>No hay estudiantes en este curso todavía.</p></div></td></tr>`;
+    if (!profiles || !profiles.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎓</div><p>Ningún estudiante se ha registrado todavía.</p></div></td></tr>`;
+      document.getElementById('est-total').textContent      = 0;
+      document.getElementById('est-completed').textContent  = 0;
+      document.getElementById('est-inprogress').textContent = 0;
       return;
     }
 
-    tbody.innerHTML = data.map(s => `<tr>
-      <td><strong>${escHtml(s.full_name)}</strong></td>
-      <td style="font-family:monospace;color:var(--muted)">${escHtml(s.cedula)}</td>
-      <td style="color:var(--muted)">${s.email ? escHtml(s.email) : '—'}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:.5rem">
-          <span class="code-chip">${escHtml(s.access_code || '—')}</span>
-          ${s.access_code ? `<button class="btn-icon" title="Copiar código" onclick="copyCode('${escHtml(s.access_code)}')">Copiar</button>` : ''}
-        </div>
-      </td>
-      <td>
-        <div class="toggle-wrap">
-          <div class="toggle ${s.active ? 'on' : ''}" onclick="toggleStudentActive('${s.id}', ${!s.active})" title="${s.active ? 'Desactivar' : 'Activar'}"></div>
-        </div>
-      </td>
-    </tr>`).join('');
+    const profileIds = profiles.map(p => p.id);
+
+    // Progreso por escenario de cada estudiante
+    const { data: progress } = await sb
+      .from('student_progress')
+      .select('profile_id, scenario_id, score, completed_at')
+      .in('profile_id', profileIds)
+      .eq('completed', true);
+
+    const progressMap = {};
+    (progress || []).forEach(p => {
+      if (!progressMap[p.profile_id]) progressMap[p.profile_id] = { count: 0, totalScore: 0, lastAt: null };
+      progressMap[p.profile_id].count++;
+      progressMap[p.profile_id].totalScore += parseFloat(p.score || 0);
+      if (!progressMap[p.profile_id].lastAt || p.completed_at > progressMap[p.profile_id].lastAt) {
+        progressMap[p.profile_id].lastAt = p.completed_at;
+      }
+    });
+
+    // Última sesión por estudiante (para mostrar último acceso si no hay progreso)
+    const { data: sessions } = await sb
+      .from('sessions')
+      .select('profile_id, started_at')
+      .in('profile_id', profileIds)
+      .order('started_at', { ascending: false });
+
+    const sessionMap = {};
+    (sessions || []).forEach(s => {
+      if (!sessionMap[s.profile_id]) sessionMap[s.profile_id] = s;
+    });
+
+    // Estadísticas de resumen
+    const fullCompleted = profiles.filter(p => (progressMap[p.id]?.count || 0) === 5).length;
+    const inProgress    = profiles.filter(p => { const c = progressMap[p.id]?.count || 0; return c > 0 && c < 5; }).length;
+    document.getElementById('est-total').textContent      = profiles.length;
+    document.getElementById('est-completed').textContent  = fullCompleted;
+    document.getElementById('est-inprogress').textContent = inProgress;
+
+    _allStudentProfiles = profiles.map(p => ({
+      ...p,
+      _progress: progressMap[p.id] || null,
+      _session:  sessionMap[p.id]  || null
+    }));
+    renderStudentProfilesTable(_allStudentProfiles);
 
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
     showToast('Error al cargar estudiantes: ' + err.message, 'err');
   }
 }
 
-function toggleStudentForm() {
-  const wrap = document.getElementById('student-form-wrap');
-  wrap.classList.toggle('hidden');
-  if (!wrap.classList.contains('hidden')) {
-    if (!state.studentCourseId) {
-      showToast('Selecciona un curso antes de añadir estudiantes.', 'err');
-      wrap.classList.add('hidden');
-      return;
-    }
-    document.getElementById('sf-name').focus();
-  }
-}
-
-async function createStudent() {
-  const courseId = state.studentCourseId;
-  if (!courseId) {
-    showToast('Selecciona un curso primero.', 'err');
+function renderStudentProfilesTable(students) {
+  const tbody = document.getElementById('tbody-est');
+  if (!students.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🔍</div><p>No se encontraron resultados.</p></div></td></tr>`;
     return;
   }
 
-  const full_name = document.getElementById('sf-name').value.trim();
-  const cedula    = document.getElementById('sf-cedula').value.trim();
-  const email     = document.getElementById('sf-email').value.trim() || null;
-  const codeInput = document.getElementById('sf-code').value.trim().toUpperCase() || null;
+  tbody.innerHTML = students.map(u => {
+    const fullName = escHtml([u.name, u.apellido].filter(Boolean).join(' ')) || '—';
+    const prog     = u._progress;
+    const count    = prog?.count || 0;
+    const avgScore = count > 0 ? Math.round(prog.totalScore / count) : null;
+    const lastDate = prog?.lastAt || u._session?.started_at;
+    const pct      = Math.round(count / 5 * 100);
+    const pColor   = count === 5 ? 'var(--green)' : count > 0 ? 'var(--amber)' : 'var(--border)';
+    const countColor = count === 5 ? 'var(--green)' : count > 0 ? 'var(--amber)' : 'var(--muted)';
 
-  if (!full_name) { showToast('El nombre completo es obligatorio.', 'err'); return; }
-  if (!cedula)    { showToast('La cédula es obligatoria.', 'err'); return; }
-
-  const payload = { course_id: courseId, full_name, cedula, email, active: true };
-  if (codeInput) payload.access_code = codeInput;
-
-  const { data, error } = await sb.from('students').insert(payload).select().single();
-
-  if (error) {
-    if (error.code === '23505') {
-      showToast('El código de acceso ya está en uso. Deja el campo vacío para generar uno automáticamente.', 'err');
-    } else {
-      showToast('Error al guardar estudiante: ' + error.message, 'err');
-    }
-    return;
-  }
-
-  // Show the generated access code prominently
-  const banner = document.getElementById('new-code-display');
-  banner.classList.remove('hidden');
-  banner.innerHTML = `
-    <div class="new-code-banner">
-      <div class="info">
-        Estudiante <strong>${escHtml(full_name)}</strong> registrado correctamente.
-        Su código de acceso es:
-      </div>
-      <div style="display:flex;align-items:center;gap:.75rem">
-        <div class="code">${escHtml(data.access_code)}</div>
-        <button class="btn-icon" onclick="copyCode('${escHtml(data.access_code)}')">Copiar</button>
-      </div>
-    </div>`;
-
-  showToast('Estudiante añadido. Código: ' + data.access_code, 'ok');
-
-  // Clear form
-  document.getElementById('sf-name').value   = '';
-  document.getElementById('sf-cedula').value = '';
-  document.getElementById('sf-email').value  = '';
-  document.getElementById('sf-code').value   = '';
-  document.getElementById('student-form-wrap').classList.add('hidden');
-
-  loadStudents(courseId);
+    return `<tr>
+      <td><strong>${fullName}</strong></td>
+      <td style="font-family:monospace;color:var(--muted)">${u.expediente || '—'}</td>
+      <td style="color:var(--muted)">${escHtml(u.periodo_academico || '—')}</td>
+      <td style="color:var(--muted)">${escHtml(u.seccion || '—')}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <div style="background:var(--border);border-radius:4px;height:6px;width:56px;overflow:hidden;flex-shrink:0">
+            <div style="background:${pColor};height:100%;width:${pct}%;transition:width .3s"></div>
+          </div>
+          <span style="font-size:12px;color:${countColor};font-weight:600">${count}/5</span>
+        </div>
+      </td>
+      <td>${avgScore != null ? `<span style="color:${scoreColor(avgScore)};font-weight:700">${avgScore}%</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td style="color:var(--muted);font-size:12px">${lastDate ? formatDate(lastDate) : '—'}</td>
+    </tr>`;
+  }).join('');
 }
 
-async function toggleStudentActive(id, newVal) {
-  const { error } = await sb.from('students').update({ active: newVal }).eq('id', id);
-  if (error) { showToast('Error al actualizar: ' + error.message, 'err'); return; }
-  if (state.studentCourseId) loadStudents(state.studentCourseId);
+function filterStudentProfiles(q) {
+  const ql = q.toLowerCase().trim();
+  if (!ql) { renderStudentProfilesTable(_allStudentProfiles); return; }
+  renderStudentProfilesTable(_allStudentProfiles.filter(u => {
+    const name = [u.name, u.apellido].join(' ').toLowerCase();
+    return name.includes(ql) || String(u.expediente || '').includes(ql);
+  }));
 }
 
-function copyCode(code) {
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(code).then(() => showToast('Código copiado: ' + code, 'ok'));
-  } else {
-    showToast('Código: ' + code, 'ok');
-  }
-}
-
-// ── PRINT CODES ────────────────────────────────────────────────
-async function printCodes() {
-  const courseId = state.studentCourseId;
-  if (!courseId) {
-    showToast('Selecciona un curso antes de imprimir.', 'err');
-    return;
-  }
-
-  const course = state.courses.find(c => c.id === courseId);
-
-  const { data: students, error } = await sb
-    .from('students')
-    .select('full_name, cedula, access_code, active')
-    .eq('course_id', courseId)
-    .eq('active', true)
-    .order('full_name');
-
-  if (error) { showToast('Error al cargar estudiantes: ' + error.message, 'err'); return; }
-
-  if (!students || !students.length) {
-    showToast('No hay estudiantes activos en este curso.', 'err');
-    return;
-  }
-
-  const courseName = course
-    ? course.name + (course.section ? ' - Sección ' + course.section : '') + (course.semester ? ' · ' + course.semester : '')
-    : 'Curso';
-
-  const codesHtml = students.map(s => `
-    <div class="code-card">
-      <div class="student-name">${escHtml(s.full_name)}</div>
-      <div class="student-cedula">Cédula: ${escHtml(s.cedula)}</div>
-      <div class="the-code">${escHtml(s.access_code || '—')}</div>
-      <div class="course-label">${escHtml(courseName)}</div>
-    </div>`).join('');
-
-  document.getElementById('print-content').innerHTML = `
-    <div class="print-header">
-      <h2>Códigos de Acceso al SimLab</h2>
-      <p>${escHtml(courseName)}</p>
-      <p style="margin-top:.3rem">Total: ${students.length} estudiante${students.length !== 1 ? 's' : ''}</p>
-    </div>
-    <div class="codes-grid">${codesHtml}</div>`;
-
-  document.getElementById('print-footer').textContent =
-    'SimLab · Laboratorio de Convertidores Eléctricos · Generado el ' + new Date().toLocaleDateString('es-VE', { dateStyle: 'long' });
-
-  document.getElementById('print-overlay').classList.remove('hidden');
-}
 
 function closePrintOverlay() {
   document.getElementById('print-overlay').classList.add('hidden');
@@ -1768,100 +1600,6 @@ function updateResultsSummary(sessions) {
   document.getElementById('res-hardest').textContent = '—';
 }
 
-// ── USUARIOS REGISTRADOS ───────────────────────────────────────
-let _allUsers = [];
-
-async function loadUsers() {
-  const tbody = document.getElementById('tbody-users');
-  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
-  document.getElementById('usr-total').textContent      = '—';
-  document.getElementById('usr-completed').textContent  = '—';
-  document.getElementById('usr-inprogress').textContent = '—';
-
-  try {
-    // Get all student profiles
-    const { data: profiles, error: pErr } = await sb
-      .from('profiles')
-      .select('id, name, apellido, expediente, periodo_academico, seccion, created_at')
-      .eq('role', 'student')
-      .order('created_at', { ascending: false });
-
-    if (pErr) throw pErr;
-
-    if (!profiles || !profiles.length) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🎓</div><p>Ningún estudiante se ha registrado todavía.</p></div></td></tr>`;
-      document.getElementById('usr-total').textContent = 0;
-      document.getElementById('usr-completed').textContent = 0;
-      document.getElementById('usr-inprogress').textContent = 0;
-      return;
-    }
-
-    // Get latest session per profile_id
-    const profileIds = profiles.map(p => p.id);
-    const { data: sessions } = await sb
-      .from('sessions')
-      .select('profile_id, status, total_score, started_at')
-      .in('profile_id', profileIds)
-      .order('started_at', { ascending: false });
-
-    // Map: latest session per student
-    const sessionMap = {};
-    (sessions || []).forEach(s => {
-      if (!sessionMap[s.profile_id]) sessionMap[s.profile_id] = s;
-    });
-
-    // Stats
-    const completed  = Object.values(sessionMap).filter(s => s.status === 'completed').length;
-    const inProgress = Object.values(sessionMap).filter(s => s.status === 'in_progress').length;
-    document.getElementById('usr-total').textContent      = profiles.length;
-    document.getElementById('usr-completed').textContent  = completed;
-    document.getElementById('usr-inprogress').textContent = inProgress;
-
-    // Cache for filter
-    _allUsers = profiles.map(p => ({ ...p, _session: sessionMap[p.id] || null }));
-    renderUsersTable(_allUsers);
-
-  } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
-    showToast('Error al cargar usuarios: ' + err.message, 'err');
-  }
-}
-
-function renderUsersTable(users) {
-  const tbody = document.getElementById('tbody-users');
-  if (!users.length) {
-    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">🔍</div><p>No se encontraron resultados.</p></div></td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = users.map(u => {
-    const fullName = escHtml([u.name, u.apellido].filter(Boolean).join(' ')) || '—';
-    const sess     = u._session;
-    const score    = sess?.total_score != null ? parseFloat(sess.total_score) : null;
-    const scoreHtml = score != null
-      ? `<span style="color:${scoreColor(score)};font-weight:700">${score.toFixed(1)}</span>`
-      : '<span style="color:var(--muted)">—</span>';
-
-    return `<tr>
-      <td><strong>${fullName}</strong></td>
-      <td style="font-family:monospace;color:var(--muted)">${u.expediente || '—'}</td>
-      <td style="color:var(--muted)">${escHtml(u.periodo_academico || '—')}</td>
-      <td style="color:var(--muted)">${escHtml(u.seccion || '—')}</td>
-      <td style="color:var(--muted);font-size:12px">${sess ? formatDate(sess.started_at) : '—'}</td>
-      <td>${scoreHtml}</td>
-      <td>${sess ? statusBadge(sess.status) : '<span class="badge badge-muted">Sin sesión</span>'}</td>
-    </tr>`;
-  }).join('');
-}
-
-function filterUsers(q) {
-  const ql = q.toLowerCase().trim();
-  if (!ql) { renderUsersTable(_allUsers); return; }
-  renderUsersTable(_allUsers.filter(u => {
-    const name = [u.name, u.apellido].join(' ').toLowerCase();
-    return name.includes(ql) || String(u.expediente || '').includes(ql);
-  }));
-}
 
 // ── UTILITY FUNCTIONS ──────────────────────────────────────────
 function scoreColor(score) {
