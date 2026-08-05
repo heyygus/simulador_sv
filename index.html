@@ -469,6 +469,114 @@
       .steps-row   { grid-template-columns: 1fr; }
       .hero-circuit { opacity: 0.08; }
     }
+    /* ── AUTH MODAL ──────────────────────────── */
+    #auth-modal {
+      position: fixed; inset: 0; z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+    }
+    .auth-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.65);
+      backdrop-filter: blur(6px);
+    }
+    .auth-card {
+      position: relative; z-index: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 2.25rem;
+      width: 100%; max-width: 460px;
+      animation: authIn .25s ease both;
+    }
+    @keyframes authIn {
+      from { opacity:0; transform: translateY(16px) scale(.97); }
+      to   { opacity:1; transform: translateY(0)   scale(1); }
+    }
+    .auth-head {
+      display: flex; justify-content: space-between;
+      align-items: flex-start; margin-bottom: 1.5rem;
+    }
+    .auth-head h2 { font-size: 1.2rem; font-weight: 700; }
+    .auth-head p  { color: var(--muted); font-size: .83rem; margin-top: .2rem; }
+    .auth-close {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); width: 30px; height: 30px;
+      border-radius: 50%; cursor: pointer; font-size: .9rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: border-color .15s, color .15s;
+    }
+    .auth-close:hover { border-color: var(--red); color: var(--red); }
+    .auth-tabs {
+      display: flex; gap: 0; margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .auth-tab {
+      background: none; border: none; border-bottom: 2px solid transparent;
+      color: var(--muted); padding: .55rem 1.1rem;
+      font-size: .88rem; font-weight: 600; cursor: pointer;
+      transition: color .15s, border-color .15s;
+      margin-bottom: -1px;
+    }
+    .auth-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .auth-field { display: flex; flex-direction: column; gap: .3rem; margin-bottom: .85rem; }
+    .auth-field label { font-size: .78rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .auth-field input {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text);
+      padding: .55rem .85rem; font-size: .9rem;
+      font-family: inherit; outline: none;
+      transition: border-color .15s;
+    }
+    .auth-field input:focus { border-color: var(--blue); }
+    .auth-row { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
+    .auth-err {
+      background: rgba(248,81,73,.1); border: 1px solid rgba(248,81,73,.3);
+      color: var(--red); border-radius: 7px; padding: .55rem .75rem;
+      font-size: .82rem; margin-bottom: .75rem;
+    }
+    .auth-ok {
+      background: rgba(63,185,80,.1); border: 1px solid rgba(63,185,80,.3);
+      color: var(--green); border-radius: 7px; padding: .55rem .75rem;
+      font-size: .82rem; margin-bottom: .75rem;
+    }
+    .btn-auth {
+      display: block; width: 100%; padding: .75rem;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      color: #fff; font-weight: 700; font-size: .95rem;
+      border: none; border-radius: 8px; cursor: pointer;
+      margin-top: .5rem;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn-auth:hover  { opacity: .88; transform: translateY(-1px); }
+    .btn-auth:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    /* nav auth elements */
+    .nav-user-info {
+      display: flex; align-items: center; gap: .85rem;
+      font-size: .88rem;
+    }
+    .nav-user-name { color: var(--muted); }
+    .nav-btn-small {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); padding: .28rem .65rem;
+      border-radius: 6px; cursor: pointer; font-size: .8rem;
+      font-family: inherit; transition: border-color .15s, color .15s;
+    }
+    .nav-btn-small:hover { border-color: var(--red); color: var(--red); }
+    .btn-primary-btn {
+      display: inline-block; padding: .9rem 2.1rem;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      color: #fff; font-weight: 700; font-size: 1rem;
+      border-radius: var(--radius-sm); border: none; cursor: pointer;
+      box-shadow: 0 4px 28px rgba(88,166,255,.32);
+      font-family: inherit;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .btn-primary-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 36px rgba(88,166,255,.48);
+    }
   </style>
 </head>
 <body>
@@ -478,7 +586,16 @@
   <a href="/" class="nav-logo">
     <i class="bolt">⚡</i>SimLab
   </a>
-  <a href="/simulador.html" class="nav-link">Simulador →</a>
+  <!-- logged out -->
+  <div id="nav-guest">
+    <button class="nav-link" onclick="openAuth('login')" style="background:none;border:none;cursor:pointer;font-family:inherit">Ingresar →</button>
+  </div>
+  <!-- logged in -->
+  <div id="nav-user" class="nav-user-info" style="display:none">
+    <span class="nav-user-name">Hola, <strong id="nav-nombre">Estudiante</strong></span>
+    <a href="/simulador.html" class="nav-link">Simulador →</a>
+    <button class="nav-btn-small" onclick="doLandingLogout()">Salir</button>
+  </div>
 </nav>
 
 
@@ -532,7 +649,7 @@
       <span class="grad">Aprende sin límites.</span>
     </h1>
     <p class="hero-sub">Simulador interactivo de errores en el laboratorio eléctrico. Cinco escenarios reales tomados de encuestas con estudiantes. Feedback inmediato. Cero riesgo real.</p>
-    <a href="/simulador.html" class="btn-primary">Iniciar simulador →</a>
+    <button class="btn-primary-btn" onclick="handleCTA()">Iniciar simulador →</button>
   </div>
 </section>
 
@@ -803,8 +920,8 @@
   <div class="cta-wrap">
     <div class="cta-card fade">
       <h2>¿Listo para tu primera práctica de seguridad?</h2>
-      <p>Sin registro. Sin instalación. Abre en cualquier navegador.</p>
-      <a href="/simulador.html" class="btn-primary">Comenzar ahora →</a>
+      <p>Crea tu cuenta en segundos. Sin correo, sin instalación.</p>
+      <button class="btn-primary-btn" onclick="handleCTA()">Comenzar ahora →</button>
     </div>
   </div>
 </section>
@@ -817,6 +934,261 @@
   <p>Desarrollado como herramienta de apoyo al aprendizaje activo</p>
 </footer>
 
+
+<!-- ══════════ AUTH MODAL ══════════ -->
+<div id="auth-modal" style="display:none" role="dialog" aria-modal="true">
+  <div class="auth-backdrop" onclick="closeAuth()"></div>
+  <div class="auth-card">
+
+    <div class="auth-head">
+      <div>
+        <h2 id="auth-title">Bienvenido a SimLab</h2>
+        <p id="auth-sub">Ingresa con tu expediente para continuar</p>
+      </div>
+      <button class="auth-close" onclick="closeAuth()" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login"    onclick="switchAuthTab('login')">Ingresar</button>
+      <button class="auth-tab"        id="tab-register" onclick="switchAuthTab('register')">Registrarse</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="pane-login">
+      <div id="login-msg" style="display:none"></div>
+      <div class="auth-field">
+        <label>Expediente</label>
+        <input type="number" id="login-exp" placeholder="12345678" autocomplete="username">
+      </div>
+      <div class="auth-field">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-auth" id="btn-login" onclick="doLogin()">Ingresar →</button>
+      <p style="text-align:center;margin-top:.9rem;font-size:.8rem;color:var(--muted)">
+        ¿Primera vez? <button onclick="switchAuthTab('register')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:.8rem;font-family:inherit">Crea tu cuenta →</button>
+      </p>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="pane-register" style="display:none">
+      <div id="reg-msg" style="display:none"></div>
+      <div class="auth-row">
+        <div class="auth-field">
+          <label>Nombre</label>
+          <input type="text" id="reg-nombre" placeholder="Ana" autocomplete="given-name">
+        </div>
+        <div class="auth-field">
+          <label>Apellido</label>
+          <input type="text" id="reg-apellido" placeholder="García" autocomplete="family-name">
+        </div>
+      </div>
+      <div class="auth-field">
+        <label>Expediente</label>
+        <input type="number" id="reg-exp" placeholder="12345678">
+      </div>
+      <div class="auth-row">
+        <div class="auth-field">
+          <label>Período académico</label>
+          <input type="text" id="reg-periodo" placeholder="2026-1">
+        </div>
+        <div class="auth-field">
+          <label>Sección</label>
+          <input type="text" id="reg-seccion" placeholder="01">
+        </div>
+      </div>
+      <div class="auth-row">
+        <div class="auth-field">
+          <label>Contraseña</label>
+          <input type="password" id="reg-pass"  placeholder="Mínimo 6 caracteres">
+        </div>
+        <div class="auth-field">
+          <label>Confirmar contraseña</label>
+          <input type="password" id="reg-pass2" placeholder="Repite tu contraseña">
+        </div>
+      </div>
+      <button class="btn-auth" id="btn-register" onclick="doRegister()">Crear cuenta →</button>
+      <p style="text-align:center;margin-top:.9rem;font-size:.8rem;color:var(--muted)">
+        ¿Ya tienes cuenta? <button onclick="switchAuthTab('login')" style="background:none;border:none;color:var(--blue);cursor:pointer;font-size:.8rem;font-family:inherit">Ingresar →</button>
+      </p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════ SUPABASE + AUTH JS ══════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  const SUPABASE_URL      = 'https://ekbambpkhhlvnmqwmgfy.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_9s_MknUajrx98bXQCWqfkw_Pd-lh_ZX';
+  const { createClient } = supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // ── Check session on load ────────────────────────────────
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session) setLoggedIn(session.user);
+    // If URL has ?auth=1, open modal (redirect from simulador)
+    if (location.search.includes('auth=')) openAuth('login');
+  });
+
+  // ── Auth state change ────────────────────────────────────
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) setLoggedIn(session.user);
+    else setLoggedOut();
+  });
+
+  function setLoggedIn(user) {
+    const nombre = user.user_metadata?.nombre || 'Estudiante';
+    document.getElementById('nav-nombre').textContent = nombre;
+    document.getElementById('nav-guest').style.display = 'none';
+    document.getElementById('nav-user').style.display  = 'flex';
+  }
+
+  function setLoggedOut() {
+    document.getElementById('nav-guest').style.display = 'block';
+    document.getElementById('nav-user').style.display  = 'none';
+  }
+
+  // ── CTA handler ──────────────────────────────────────────
+  window.handleCTA = async function() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) { window.location.href = '/simulador.html'; }
+    else          { openAuth('register'); }
+  };
+
+  // ── Modal open/close ─────────────────────────────────────
+  window.openAuth = function(tab) {
+    document.getElementById('auth-modal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    switchAuthTab(tab || 'login');
+    setTimeout(() => document.getElementById(
+      tab === 'register' ? 'reg-nombre' : 'login-exp'
+    ).focus(), 80);
+  };
+
+  window.closeAuth = function() {
+    document.getElementById('auth-modal').style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  window.switchAuthTab = function(tab) {
+    document.getElementById('pane-login').style.display    = tab === 'login'    ? 'block' : 'none';
+    document.getElementById('pane-register').style.display = tab === 'register' ? 'block' : 'none';
+    document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    clearMsgs();
+  };
+
+  function clearMsgs() {
+    ['login-msg','reg-msg'].forEach(id => {
+      const el = document.getElementById(id);
+      el.style.display = 'none';
+      el.textContent = '';
+      el.className = '';
+    });
+  }
+
+  function showMsg(id, text, ok) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className   = ok ? 'auth-ok' : 'auth-err';
+    el.style.display = 'block';
+  }
+
+  // ── Login ────────────────────────────────────────────────
+  window.doLogin = async function() {
+    const exp  = document.getElementById('login-exp').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    const btn  = document.getElementById('btn-login');
+
+    clearMsgs();
+    if (!exp || !pass) { showMsg('login-msg', 'Ingresa tu expediente y contraseña.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Verificando...';
+    const email = exp + '@simlab.local';
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    btn.disabled = false; btn.textContent = 'Ingresar →';
+
+    if (error) {
+      showMsg('login-msg', 'Expediente o contraseña incorrectos.');
+      return;
+    }
+    closeAuth();
+    window.location.href = '/simulador.html';
+  };
+
+  // ── Register ─────────────────────────────────────────────
+  window.doRegister = async function() {
+    const nombre   = document.getElementById('reg-nombre').value.trim();
+    const apellido = document.getElementById('reg-apellido').value.trim();
+    const exp      = document.getElementById('reg-exp').value.trim();
+    const periodo  = document.getElementById('reg-periodo').value.trim();
+    const seccion  = document.getElementById('reg-seccion').value.trim();
+    const pass     = document.getElementById('reg-pass').value;
+    const pass2    = document.getElementById('reg-pass2').value;
+    const btn      = document.getElementById('btn-register');
+
+    clearMsgs();
+    if (!nombre || !apellido || !exp)
+      return showMsg('reg-msg', 'Nombre, apellido y expediente son obligatorios.');
+    if (!periodo || !seccion)
+      return showMsg('reg-msg', 'Ingresa el período académico y sección.');
+    if (pass.length < 6)
+      return showMsg('reg-msg', 'La contraseña debe tener al menos 6 caracteres.');
+    if (pass !== pass2)
+      return showMsg('reg-msg', 'Las contraseñas no coinciden.');
+
+    btn.disabled = true; btn.textContent = 'Creando cuenta...';
+
+    const email = exp + '@simlab.local';
+    const { data, error } = await sb.auth.signUp({
+      email, password: pass,
+      options: {
+        data: { nombre, apellido, expediente: parseInt(exp), periodo_academico: periodo, seccion, role: 'student' }
+      }
+    });
+    btn.disabled = false; btn.textContent = 'Crear cuenta →';
+
+    if (error) {
+      const msg = error.message.includes('already registered')
+        ? 'Este expediente ya tiene una cuenta. Usa "Ingresar".'
+        : 'Error al registrarse: ' + error.message;
+      showMsg('reg-msg', msg);
+      return;
+    }
+
+    // Auto-login after register (works if email confirmation is disabled in Supabase)
+    const { error: signInErr } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (!signInErr) {
+      closeAuth();
+      window.location.href = '/simulador.html';
+    } else {
+      showMsg('reg-msg',
+        '¡Cuenta creada! Confirma tu correo si es necesario, luego inicia sesión.',
+        true);
+    }
+  };
+
+  // ── Logout (from nav) ────────────────────────────────────
+  window.doLandingLogout = async function() {
+    await sb.auth.signOut();
+    setLoggedOut();
+  };
+
+  // Close modal on Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeAuth();
+  });
+
+  // Enter key in login fields
+  ['login-exp','login-pass'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+  });
+})();
+</script>
 
 <script>
   // ── Intersection Observer: fade-in elements ──────────────

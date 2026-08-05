@@ -572,8 +572,8 @@ tbody tr:hover td { background: var(--surface2); }
     <div class="auth-form">
       <div id="auth-error" class="auth-error hidden"></div>
       <div class="form-group">
-        <label for="inp-email">Correo electrónico</label>
-        <input type="email" id="inp-email" placeholder="profesor@universidad.edu" autocomplete="email">
+        <label for="inp-username">Usuario</label>
+        <input type="text" id="inp-username" placeholder="admin" autocomplete="username">
       </div>
       <div class="form-group">
         <label for="inp-password">Contraseña</label>
@@ -985,15 +985,16 @@ sb.auth.onAuthStateChange(async (event, session) => {
 
 // ── AUTH FUNCTIONS ─────────────────────────────────────────────
 async function doLogin() {
-  const email    = document.getElementById('inp-email').value.trim();
+  const username = document.getElementById('inp-username').value.trim();
   const password = document.getElementById('inp-password').value;
   const errEl    = document.getElementById('auth-error');
   const btnEl    = document.getElementById('btn-login');
+  const email    = username + '@simlab.local';
 
   errEl.classList.add('hidden');
 
-  if (!email || !password) {
-    errEl.textContent = 'Por favor ingresa tu correo y contraseña.';
+  if (!username || !password) {
+    errEl.textContent = 'Por favor ingresa tu usuario y contraseña.';
     errEl.classList.remove('hidden');
     return;
   }
@@ -1017,8 +1018,10 @@ async function doLogout() {
 }
 
 // Allow Enter key on password field
-document.getElementById('inp-password').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
+['inp-username','inp-password'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
 });
 
 // ── PROFILE ────────────────────────────────────────────────────

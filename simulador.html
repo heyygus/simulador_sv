@@ -170,6 +170,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 </style>
 </head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <body>
 
 <!-- ═══════════════ LANDING ═══════════════ -->
@@ -178,6 +179,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <h1>SimLab · Laboratorio Eléctrico</h1>
     <p>Simulador de errores y buenas prácticas · Convertidores Eléctricos 41151</p>
     <small>Identifica el error, corrige el procedimiento, aprende la norma.</small>
+    <div id="student-bar" style="display:none;margin-top:.85rem;display:none;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap">
+      <span style="font-size:.83rem;color:var(--muted)">Sesión: <strong id="student-display-name" style="color:var(--text)">Estudiante</strong></span>
+      <button onclick="sbLogout()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:.25rem .65rem;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:inherit;transition:border-color .15s,color .15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Salir</button>
+    </div>
   </div>
 
   <div class="progress-row">
@@ -1544,6 +1549,7 @@ function showCompletion() {
 
   const totalWrong = Object.values(state.wrongAttempts).reduce((a,b)=>a+b,0);
   const pct = Math.max(0, 100 - totalWrong * 5);
+  saveResultsToSupabase(pct, totalWrong);
   document.getElementById('comp-score').textContent = pct + '%';
 
   let grade, msg;
@@ -1562,9 +1568,84 @@ function showCompletion() {
 }
 
 // ═══════════════════════════════════════════
-//  INIT
+//  SUPABASE AUTH + INIT
 // ═══════════════════════════════════════════
-showLanding();
+const SUPABASE_URL      = 'https://ekbambpkhhlvnmqwmgfy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_9s_MknUajrx98bXQCWqfkw_Pd-lh_ZX';
+const { createClient } = supabase;
+const _sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let _sessionId = null;
+let _startTime = Date.now();
+
+_sb.auth.getSession().then(({ data: { session } }) => {
+  if (!session) {
+    // Not logged in — redirect to landing with auth modal
+    window.location.replace('/?auth=1');
+    return;
+  }
+
+  // Show student name bar
+  const meta    = session.user.user_metadata || {};
+  const nombre  = meta.nombre   || '';
+  const apellido = meta.apellido || '';
+  const fullName = (nombre + ' ' + apellido).trim() || 'Estudiante';
+  document.getElementById('student-display-name').textContent = fullName;
+  const bar = document.getElementById('student-bar');
+  bar.style.display = 'flex';
+
+  // Store user id for session tracking
+  state.userId = session.user.id;
+
+  // Create a session record in Supabase (fire-and-forget)
+  _sb.from('sessions').insert({
+    profile_id: session.user.id,
+    status: 'in_progress',
+    user_agent: navigator.userAgent.slice(0, 200)
+  }).select('id').single().then(({ data }) => {
+    if (data) _sessionId = data.id;
+  });
+
+  _startTime = Date.now();
+  showLanding();
+});
+
+function sbLogout() {
+  _sb.auth.signOut().then(() => {
+    window.location.href = '/';
+  });
+}
+
+// Save results to Supabase after all scenarios complete
+async function saveResultsToSupabase(totalScore, totalWrong) {
+  if (!_sessionId) return;
+  try {
+    const elapsed = Math.round((Date.now() - _startTime) / 1000);
+    await _sb.from('sessions').update({
+      status:               'completed',
+      total_score:          totalScore,
+      scenarios_completed:  state.completed.size,
+      total_wrong_attempts: totalWrong,
+      completed_at:         new Date().toISOString()
+    }).eq('id', _sessionId);
+
+    // Scenario results
+    const rows = [...state.completed].map(id => ({
+      session_id:       _sessionId,
+      scenario_id:      parseInt(id),
+      scenario_name:    SCENARIOS[id]?.title || `Escenario ${id}`,
+      completed:        true,
+      wrong_attempts:   state.wrongAttempts[id] || 0,
+      stages_total:     SCENARIOS[id]?.stages?.length || 3,
+      stages_completed: SCENARIOS[id]?.stages?.length || 3,
+      time_spent_seconds: Math.round(elapsed / state.completed.size),
+      completed_at:     new Date().toISOString()
+    }));
+    if (rows.length) await _sb.from('scenario_results').insert(rows);
+  } catch(e) {
+    // Silent fail — don't interrupt the student experience
+  }
+}
 </script>
 </body>
 </html>
