@@ -240,10 +240,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 // ═══════════════════════════════════════════
 const state = {
   completed: new Set(),
-  wrongAttempts: {},   // scenarioId → count
+  wrongAttempts: {},   // scenarioId → count acumulado
   currentId: null,
   currentStage: 0,
-  stageWrong: 0,       // wrong attempts in current stage
+  stageWrong: 0,
+  stageCorrect: 0,     // etapas respondidas bien en el intento actual
+  stageTotal: 0,       // total de etapas del escenario actual
+  scenarioScores: {},  // scenarioId → stagesCorrect al aprobar
   userId: null,
 };
 
@@ -1214,6 +1217,9 @@ function startScenario(id) {
   state.currentId = id;
   state.currentStage = 0;
   state.stageWrong = 0;
+  state.stageCorrect = 0;
+  state.stageTotal = SCENARIOS[id].stages.length;
+  state.wrongAttempts[id] = 0;   // reiniciar para este intento
 
   const sc = SCENARIOS[id];
   document.getElementById('landing').style.display = 'none';
@@ -1363,6 +1369,7 @@ function updateConnectorStatus(id, stageIdx) {
     nextBtn.textContent = 'Energizar circuito →';
     nextBtn.className = 'next-btn show';
     nextBtn.onclick = () => {
+      state.stageCorrect++;   // fijar todos los conectores = etapa correcta
       const stage = sc.stages[stageIdx];
       const correctOpt = stage.options.find(o => o.correct);
       if (correctOpt) {
@@ -1408,7 +1415,8 @@ function setupDialClicks(id, stageIdx) {
         setTimeout(() => {
           circ.setAttribute('fill', prev);
           circ.removeAttribute('stroke');
-        }, 1000);
+          advanceFromWrongAnswer(id, stageIdx);
+        }, 1800);
       }
     };
   });
@@ -1435,10 +1443,11 @@ function handleDialClick(id, stageIdx, optIdx, dialEl) {
     nextBtn.className = 'next-btn show';
     if (isLast) {
       nextBtn.textContent = '✓ Completar escenario';
-      nextBtn.onclick = () => completeScenario(id);
+      nextBtn.onclick = () => { state.stageCorrect++; evalScenario(id); };
     } else {
       nextBtn.textContent = 'Siguiente etapa →';
       nextBtn.onclick = () => {
+        state.stageCorrect++;
         document.getElementById('circuit-wrap').classList.remove('danger-bg');
         renderStage(id, stageIdx + 1);
       };
@@ -1455,8 +1464,8 @@ function handleDialClick(id, stageIdx, optIdx, dialEl) {
       circ.setAttribute('fill', '#1a2a3a');
       circ.removeAttribute('stroke');
       document.getElementById('circuit-wrap').classList.remove('danger-bg');
-      setupDialClicks(id, stageIdx); // re-register handlers
-    }, 1400);
+      advanceFromWrongAnswer(id, stageIdx);
+    }, 1800);
   }
 }
 
@@ -1515,43 +1524,42 @@ function handleOption(id, stageIdx, optIdx, btn) {
     fb.innerHTML = opt.fb;
     fb.className = 'fb ok show';
     if (opt.effect) opt.effect();
-    // Mark step done
     const li = document.getElementById(`step-${stageIdx}`);
     if (li) li.className = 'done';
-    // Next stage or complete
     const nextBtn = document.getElementById('next-btn');
     const isLast = stageIdx >= sc.stages.length - 1;
     nextBtn.className = 'next-btn show';
     if (isLast) {
       nextBtn.textContent = '✓ Completar escenario';
-      nextBtn.onclick = () => completeScenario(id);
+      nextBtn.onclick = () => { state.stageCorrect++; evalScenario(id); };
     } else {
       nextBtn.textContent = `Siguiente etapa →`;
       nextBtn.onclick = () => {
+        state.stageCorrect++;
         document.getElementById('circuit-wrap').classList.remove('danger-bg');
         renderStage(id, stageIdx + 1);
       };
     }
   } else {
     btn.className = 'opt wrong';
-    fb.innerHTML = opt.fb;
+    fb.innerHTML = opt.fb;   // explica por qué está mal, sin revelar la correcta
     fb.className = 'fb err show';
     if (opt.effect) opt.effect();
-    state.stageWrong++;
     if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
     state.wrongAttempts[id]++;
+    // Sin reintento: avanza automáticamente a la siguiente etapa
     setTimeout(() => {
-      btn.className = 'opt';
-      document.querySelectorAll('#opts .opt').forEach(b => b.disabled = false);
-    }, 1000);
+      document.getElementById('circuit-wrap').classList.remove('danger-bg');
+      advanceFromWrongAnswer(id, stageIdx);
+    }, 1800);
   }
 }
 
 function completeScenario(id) {
+  state.scenarioScores[id] = state.stageCorrect;
   state.completed.add(id);
-  saveScenarioProgress(id);   // guarda inmediatamente en Supabase
+  saveScenarioProgress(id);
   const total = state.completed.size;
-
   if (total >= 5) {
     showCompletion();
   } else {
@@ -1559,13 +1567,84 @@ function completeScenario(id) {
   }
 }
 
+// Avanza a la siguiente etapa sin reintento (respuesta incorrecta)
+function advanceFromWrongAnswer(id, stageIdx) {
+  const sc = SCENARIOS[id];
+  if (stageIdx >= sc.stages.length - 1) {
+    evalScenario(id);
+  } else {
+    renderStage(id, stageIdx + 1);
+  }
+}
+
+// Evalúa si el estudiante aprobó el escenario (≥50% etapas correctas)
+function evalScenario(id) {
+  const correct = state.stageCorrect;
+  const total   = state.stageTotal;
+  if (total > 0 && correct / total >= 0.5) {
+    completeScenario(id);
+  } else {
+    showScenarioFail(id, correct, total);
+  }
+}
+
+// Muestra pantalla de "No aprobado" dentro del simulador
+function showScenarioFail(id, correct, total) {
+  saveFailedAttempt(id, correct, total);
+  const pct = total > 0 ? Math.round(correct / total * 100) : 0;
+  document.getElementById('action-box').innerHTML = `
+    <div style="text-align:center;padding:1.5rem .5rem">
+      <div style="font-size:2rem;margin-bottom:.5rem">❌</div>
+      <div class="box-lbl" style="color:var(--red);margin-bottom:.5rem">No aprobado</div>
+      <p style="color:var(--muted);margin:.5rem 0 1.25rem;font-size:.88rem;line-height:1.5">
+        Respondiste correctamente
+        <strong style="color:var(--text)">${correct} de ${total}</strong> etapas
+        (${pct}%). Se requiere al menos el 50% para completar el escenario.
+      </p>
+      <button class="next-btn show"
+        style="display:block;width:100%;margin-bottom:.6rem"
+        onclick="startScenario(${id})">
+        Reintentar escenario →
+      </button>
+      <button class="back-btn"
+        style="display:block;width:100%;margin:0;text-align:center"
+        onclick="showLanding()">
+        ← Volver al inicio
+      </button>
+    </div>`;
+}
+
+// Guarda un intento fallido en scenario_results (visible para el admin)
+async function saveFailedAttempt(id, correct, total) {
+  if (!_sessionId) return;
+  const wrong = state.wrongAttempts[id] || 0;
+  try {
+    await _sb.from('scenario_results').insert({
+      session_id:       _sessionId,
+      scenario_id:      parseInt(id),
+      scenario_name:    SCENARIOS[id]?.title || `Escenario ${id}`,
+      completed:        true,
+      passed:           false,
+      wrong_attempts:   wrong,
+      stages_correct:   correct,
+      stages_total:     total,
+      stages_completed: total,
+      time_spent_seconds: 0,
+      completed_at:     new Date().toISOString()
+    });
+  } catch(e) { /* silent */ }
+}
+
 function showCompletion() {
   document.getElementById('landing').style.display = 'none';
   document.getElementById('sim').style.display = 'none';
   document.getElementById('completion').style.display = 'block';
 
+  const totalCorrect  = Object.values(state.scenarioScores).reduce((a,b)=>a+b,0);
+  const totalPossible = Object.keys(state.scenarioScores).reduce((acc,sid)=>
+    acc + (SCENARIOS[parseInt(sid)]?.stages?.length || 3), 0);
   const totalWrong = Object.values(state.wrongAttempts).reduce((a,b)=>a+b,0);
-  const pct = Math.max(0, 100 - totalWrong * 5);
+  const pct = totalPossible > 0 ? Math.round(totalCorrect / totalPossible * 100) : 0;
   saveResultsToSupabase(pct, totalWrong);
   document.getElementById('comp-score').textContent = pct + '%';
 
@@ -1660,13 +1739,15 @@ async function saveResultsToSupabase(totalScore, totalWrong) {
   }
 }
 
-// Guarda el progreso de un escenario individual inmediatamente al completarlo
+// Guarda el progreso de un escenario aprobado inmediatamente al completarlo
 async function saveScenarioProgress(id) {
   if (!state.userId) return;
-  const wrong = state.wrongAttempts[id] || 0;
-  const score = Math.max(0, 100 - wrong * 20);
+  const wrong   = state.wrongAttempts[id] || 0;
+  const correct = state.stageCorrect;
+  const total   = state.stageTotal;
+  const score   = total > 0 ? Math.round(correct / total * 100) : 100;
 
-  // 1. Upsert en student_progress — persistencia permanente por estudiante
+  // 1. Upsert en student_progress — marca permanente de aprobado
   try {
     await _sb.from('student_progress').upsert({
       profile_id:     state.userId,
@@ -1680,21 +1761,23 @@ async function saveScenarioProgress(id) {
     }, { onConflict: 'profile_id,scenario_id' });
   } catch(e) { /* silent */ }
 
-  // 2. Registrar en scenario_results del historial de sesión
+  // 2. Registrar intento aprobado en scenario_results (historial de sesión)
   if (_sessionId) {
     _sb.from('scenario_results').insert({
       session_id:       _sessionId,
       scenario_id:      parseInt(id),
       scenario_name:    SCENARIOS[id]?.title || `Escenario ${id}`,
       completed:        true,
+      passed:           true,
       wrong_attempts:   wrong,
-      stages_total:     SCENARIOS[id]?.stages?.length || 3,
-      stages_completed: SCENARIOS[id]?.stages?.length || 3,
+      stages_correct:   correct,
+      stages_total:     total,
+      stages_completed: total,
       time_spent_seconds: 0,
       completed_at:     new Date().toISOString()
     }).then(() => {});
 
-    // 3. Actualizar el contador de escenarios en la sesión activa
+    // 3. Actualizar contador en la sesión activa
     _sb.from('sessions').update({
       scenarios_completed: state.completed.size
     }).eq('id', _sessionId).then(() => {});

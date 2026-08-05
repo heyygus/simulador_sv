@@ -480,6 +480,22 @@ tbody tr:hover td { background: var(--surface2); }
 .empty-state .icon { font-size: 2rem; margin-bottom: .5rem; }
 .empty-state p { font-size: .88rem; }
 
+/* ── DETAIL PANEL (expand per student) ────────────────────── */
+.detail-panel {
+  background: var(--bg);
+  border-left: 3px solid var(--blue);
+  border-bottom: 1px solid var(--border);
+  animation: slideDown .15s ease;
+}
+@keyframes slideDown { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:none } }
+.detail-panel table td { padding: .35rem .5rem; border-bottom: 1px solid var(--border); }
+.detail-panel table tr:last-child td { border-bottom: none; }
+.detail-empty { padding: 1rem 1.5rem; color: var(--muted); font-size: .85rem; }
+.chevron-btn { background: none; border: 1px solid var(--border); color: var(--muted);
+  padding: .2rem .5rem; border-radius: 5px; cursor: pointer; font-size: .8rem;
+  transition: border-color .15s, color .15s; }
+.chevron-btn:hover { border-color: var(--blue); color: var(--blue); }
+
 /* ── PRINT ────────────────────────────────────────────────── */
 #print-overlay {
   position: fixed;
@@ -794,10 +810,11 @@ tbody tr:hover td { background: var(--surface2); }
                 <th>Progreso</th>
                 <th>Puntaje</th>
                 <th>Último acceso</th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="tbody-est">
-              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1341,16 +1358,17 @@ function renderStudentProfilesTable(students) {
   }
 
   tbody.innerHTML = students.map(u => {
-    const fullName = escHtml([u.name, u.apellido].filter(Boolean).join(' ')) || '—';
-    const prog     = u._progress;
-    const count    = prog?.count || 0;
-    const avgScore = count > 0 ? Math.round(prog.totalScore / count) : null;
-    const lastDate = prog?.lastAt || u._session?.started_at;
-    const pct      = Math.round(count / 5 * 100);
-    const pColor   = count === 5 ? 'var(--green)' : count > 0 ? 'var(--amber)' : 'var(--border)';
+    const fullName   = escHtml([u.name, u.apellido].filter(Boolean).join(' ')) || '—';
+    const prog       = u._progress;
+    const count      = prog?.count || 0;
+    const avgScore   = count > 0 ? Math.round(prog.totalScore / count) : null;
+    const lastDate   = prog?.lastAt || u._session?.started_at;
+    const pct        = Math.round(count / 5 * 100);
+    const pColor     = count === 5 ? 'var(--green)' : count > 0 ? 'var(--amber)' : 'var(--border)';
     const countColor = count === 5 ? 'var(--green)' : count > 0 ? 'var(--amber)' : 'var(--muted)';
+    const safeId     = u.id.replace(/-/g,'');
 
-    return `<tr>
+    return `<tr id="srow-${safeId}" style="cursor:pointer" onclick="toggleStudentDetail('${u.id}','${safeId}')">
       <td><strong>${fullName}</strong></td>
       <td style="font-family:monospace;color:var(--muted)">${u.expediente || '—'}</td>
       <td style="color:var(--muted)">${escHtml(u.periodo_academico || '—')}</td>
@@ -1365,6 +1383,10 @@ function renderStudentProfilesTable(students) {
       </td>
       <td>${avgScore != null ? `<span style="color:${scoreColor(avgScore)};font-weight:700">${avgScore}%</span>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td style="color:var(--muted);font-size:12px">${lastDate ? formatDate(lastDate) : '—'}</td>
+      <td style="text-align:center">
+        <button id="chevron-${safeId}" class="chevron-btn"
+          onclick="event.stopPropagation();toggleStudentDetail('${u.id}','${safeId}')">▶</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -1376,6 +1398,128 @@ function filterStudentProfiles(q) {
     const name = [u.name, u.apellido].join(' ').toLowerCase();
     return name.includes(ql) || String(u.expediente || '').includes(ql);
   }));
+}
+
+// ── DETALLE POR ESTUDIANTE ─────────────────────────────────────
+async function toggleStudentDetail(profileId, safeId) {
+  const existing = document.getElementById('detail-' + safeId);
+  if (existing) {
+    const isHidden = existing.style.display === 'none';
+    existing.style.display = isHidden ? '' : 'none';
+    const ch = document.getElementById('chevron-' + safeId);
+    if (ch) ch.textContent = isHidden ? '▼' : '▶';
+    return;
+  }
+
+  const studentRow = document.getElementById('srow-' + safeId);
+  if (!studentRow) return;
+
+  const detailTr = document.createElement('tr');
+  detailTr.id = 'detail-' + safeId;
+  detailTr.innerHTML = `<td colspan="8" style="padding:0">
+    <div class="detail-panel" id="dpanel-${safeId}">
+      <div class="detail-empty">Cargando detalle...</div>
+    </div>
+  </td>`;
+  studentRow.after(detailTr);
+
+  const ch = document.getElementById('chevron-' + safeId);
+  if (ch) ch.textContent = '▼';
+
+  await loadStudentDetail(profileId, safeId);
+}
+
+async function loadStudentDetail(profileId, safeId) {
+  const panel = document.getElementById('dpanel-' + safeId);
+  if (!panel) return;
+
+  const NAMES = {
+    1: 'Amperímetro en Paralelo',
+    2: 'Escala Incorrecta del Multímetro',
+    3: 'Falso Cero — Circuito Trifásico',
+    4: 'Falso Contacto en Circuito RLC',
+    5: 'Control de Corriente con Reóstato'
+  };
+
+  try {
+    // 1. Obtener todas las sesiones del estudiante
+    const { data: sessions } = await sb
+      .from('sessions').select('id').eq('profile_id', profileId);
+
+    if (!sessions?.length) {
+      panel.innerHTML = `<div class="detail-empty">Sin sesiones registradas todavía.</div>`;
+      return;
+    }
+
+    const sessionIds = sessions.map(s => s.id);
+
+    // 2. Obtener todos los intentos (aprobados y reprobados)
+    const { data: results, error } = await sb
+      .from('scenario_results')
+      .select('scenario_id, scenario_name, passed, wrong_attempts, stages_correct, stages_total, completed_at')
+      .in('session_id', sessionIds)
+      .order('completed_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!results?.length) {
+      panel.innerHTML = `<div class="detail-empty">Sin intentos registrados todavía.</div>`;
+      return;
+    }
+
+    // 3. Agrupar por escenario
+    const map = {};
+    results.forEach(r => {
+      const k = r.scenario_id;
+      if (!map[k]) map[k] = { name: r.scenario_name || NAMES[k] || `Escenario ${k}`,
+        attempts: 0, passed: false, bestScore: 0, lastDate: null };
+      map[k].attempts++;
+      if (r.passed) map[k].passed = true;
+      const s = r.stages_total > 0 && r.stages_correct != null
+        ? Math.round(r.stages_correct / r.stages_total * 100) : (r.passed ? 100 : 0);
+      if (s > map[k].bestScore) map[k].bestScore = s;
+      if (!map[k].lastDate || r.completed_at > map[k].lastDate) map[k].lastDate = r.completed_at;
+    });
+
+    // 4. Renderizar tabla por escenario (1-5)
+    const rows = [1,2,3,4,5].map(sid => {
+      const m = map[sid];
+      if (!m) return `<tr style="opacity:.35">
+        <td>${NAMES[sid]}</td><td style="text-align:center">—</td>
+        <td>—</td><td style="text-align:center">—</td><td>—</td></tr>`;
+      const passHtml = m.passed
+        ? `<span style="color:var(--green);font-weight:600">✓ Aprobado</span>`
+        : `<span style="color:var(--red);font-weight:600">✗ No aprobado</span>`;
+      const sc = m.bestScore > 0
+        ? `<span style="color:${scoreColor(m.bestScore)};font-weight:700">${m.bestScore}%</span>`
+        : '—';
+      return `<tr>
+        <td>${escHtml(m.name)}</td>
+        <td style="text-align:center;color:var(--muted)">${m.attempts}</td>
+        <td>${passHtml}</td>
+        <td style="text-align:center">${sc}</td>
+        <td style="color:var(--muted);font-size:11px">${m.lastDate ? formatDate(m.lastDate) : '—'}</td>
+      </tr>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div style="padding:.5rem 1.5rem .75rem">
+        <table style="font-size:12.5px;border-collapse:collapse;width:100%">
+          <thead><tr>
+            <th style="text-align:left;padding:.4rem .5rem;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Escenario</th>
+            <th style="text-align:center;padding:.4rem .5rem;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Intentos</th>
+            <th style="padding:.4rem .5rem;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Estado</th>
+            <th style="text-align:center;padding:.4rem .5rem;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Mejor puntaje</th>
+            <th style="padding:.4rem .5rem;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Último intento</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+
+  } catch (err) {
+    if (panel) panel.innerHTML =
+      `<div class="detail-empty" style="color:var(--red)">Error: ${escHtml(err.message)}</div>`;
+  }
 }
 
 
