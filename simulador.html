@@ -246,6 +246,7 @@ const state = {
   stageWrong: 0,
   stageCorrect: 0,     // etapas respondidas bien en el intento actual
   stageTotal: 0,       // total de etapas del escenario actual
+  stageResults: [],    // [{stageIdx, label, correct}] — resultado por etapa
   scenarioScores: {},  // scenarioId → stagesCorrect al aprobar
   userId: null,
 };
@@ -1219,6 +1220,7 @@ function startScenario(id) {
   state.stageWrong = 0;
   state.stageCorrect = 0;
   state.stageTotal = SCENARIOS[id].stages.length;
+  state.stageResults = [];       // reiniciar historial de etapas
   state.wrongAttempts[id] = 0;   // reiniciar para este intento
 
   const sc = SCENARIOS[id];
@@ -1371,6 +1373,7 @@ function updateConnectorStatus(id, stageIdx) {
     nextBtn.onclick = () => {
       state.stageCorrect++;   // fijar todos los conectores = etapa correcta
       const stage = sc.stages[stageIdx];
+      state.stageResults.push({ stageIdx, label: stage.label || `Etapa ${stageIdx+1}`, correct: true });
       const correctOpt = stage.options.find(o => o.correct);
       if (correctOpt) {
         fb.innerHTML = correctOpt.fb;
@@ -1412,11 +1415,16 @@ function setupDialClicks(id, stageIdx) {
         circ.setAttribute('stroke', 'var(--amber)');
         if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
         state.wrongAttempts[id]++;
-        setTimeout(() => {
+        state.stageResults.push({ stageIdx, label: SCENARIOS[id].stages[stageIdx]?.label || `Etapa ${stageIdx+1}`, correct: false });
+        const nextBtnX = document.getElementById('next-btn');
+        const isLastX  = stageIdx >= SCENARIOS[id].stages.length - 1;
+        nextBtnX.className = 'next-btn show';
+        nextBtnX.textContent = isLastX ? 'Ver resultados →' : 'Siguiente etapa →';
+        nextBtnX.onclick = () => {
           circ.setAttribute('fill', prev);
           circ.removeAttribute('stroke');
           advanceFromWrongAnswer(id, stageIdx);
-        }, 1800);
+        };
       }
     };
   });
@@ -1438,11 +1446,12 @@ function handleDialClick(id, stageIdx, optIdx, dialEl) {
     if (opt.effect) opt.effect();
     const li = document.getElementById(`step-${stageIdx}`);
     if (li) li.className = 'done';
+    state.stageResults.push({ stageIdx, label: sc.stages[stageIdx].label || `Etapa ${stageIdx+1}`, correct: true });
     const nextBtn = document.getElementById('next-btn');
     const isLast = stageIdx >= sc.stages.length - 1;
     nextBtn.className = 'next-btn show';
     if (isLast) {
-      nextBtn.textContent = '✓ Completar escenario';
+      nextBtn.textContent = 'Ver resultados →';
       nextBtn.onclick = () => { state.stageCorrect++; evalScenario(id); };
     } else {
       nextBtn.textContent = 'Siguiente etapa →';
@@ -1460,12 +1469,17 @@ function handleDialClick(id, stageIdx, optIdx, dialEl) {
     if (opt.effect) opt.effect();
     if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
     state.wrongAttempts[id]++;
-    setTimeout(() => {
+    state.stageResults.push({ stageIdx, label: sc.stages[stageIdx].label || `Etapa ${stageIdx+1}`, correct: false });
+    const nextBtnD = document.getElementById('next-btn');
+    const isLastD  = stageIdx >= sc.stages.length - 1;
+    nextBtnD.className = 'next-btn show';
+    nextBtnD.textContent = isLastD ? 'Ver resultados →' : 'Siguiente etapa →';
+    nextBtnD.onclick = () => {
       circ.setAttribute('fill', '#1a2a3a');
       circ.removeAttribute('stroke');
       document.getElementById('circuit-wrap').classList.remove('danger-bg');
       advanceFromWrongAnswer(id, stageIdx);
-    }, 1800);
+    };
   }
 }
 
@@ -1526,14 +1540,15 @@ function handleOption(id, stageIdx, optIdx, btn) {
     if (opt.effect) opt.effect();
     const li = document.getElementById(`step-${stageIdx}`);
     if (li) li.className = 'done';
+    state.stageResults.push({ stageIdx, label: sc.stages[stageIdx].label || `Etapa ${stageIdx+1}`, correct: true });
     const nextBtn = document.getElementById('next-btn');
     const isLast = stageIdx >= sc.stages.length - 1;
     nextBtn.className = 'next-btn show';
     if (isLast) {
-      nextBtn.textContent = '✓ Completar escenario';
+      nextBtn.textContent = 'Ver resultados →';
       nextBtn.onclick = () => { state.stageCorrect++; evalScenario(id); };
     } else {
-      nextBtn.textContent = `Siguiente etapa →`;
+      nextBtn.textContent = 'Siguiente etapa →';
       nextBtn.onclick = () => {
         state.stageCorrect++;
         document.getElementById('circuit-wrap').classList.remove('danger-bg');
@@ -1547,11 +1562,16 @@ function handleOption(id, stageIdx, optIdx, btn) {
     if (opt.effect) opt.effect();
     if (!state.wrongAttempts[id]) state.wrongAttempts[id] = 0;
     state.wrongAttempts[id]++;
-    // Sin reintento: avanza automáticamente a la siguiente etapa
-    setTimeout(() => {
+    state.stageResults.push({ stageIdx, label: sc.stages[stageIdx].label || `Etapa ${stageIdx+1}`, correct: false });
+    // Sin reintento: botón para avanzar manualmente
+    const nextBtn = document.getElementById('next-btn');
+    const isLast  = stageIdx >= sc.stages.length - 1;
+    nextBtn.className = 'next-btn show';
+    nextBtn.textContent = isLast ? 'Ver resultados →' : 'Siguiente etapa →';
+    nextBtn.onclick = () => {
       document.getElementById('circuit-wrap').classList.remove('danger-bg');
       advanceFromWrongAnswer(id, stageIdx);
-    }, 1800);
+    };
   }
 }
 
@@ -1581,37 +1601,56 @@ function advanceFromWrongAnswer(id, stageIdx) {
 function evalScenario(id) {
   const correct = state.stageCorrect;
   const total   = state.stageTotal;
-  if (total > 0 && correct / total >= 0.5) {
-    completeScenario(id);
-  } else {
-    showScenarioFail(id, correct, total);
-  }
+  const passed  = total > 0 && correct / total >= 0.5;
+  if (!passed) saveFailedAttempt(id, correct, total);
+  showScenarioResults(id, passed);
 }
 
-// Muestra pantalla de "No aprobado" dentro del simulador
-function showScenarioFail(id, correct, total) {
-  saveFailedAttempt(id, correct, total);
-  const pct = total > 0 ? Math.round(correct / total * 100) : 0;
-  document.getElementById('action-box').innerHTML = `
-    <div style="text-align:center;padding:1.5rem .5rem">
-      <div style="font-size:2rem;margin-bottom:.5rem">❌</div>
-      <div class="box-lbl" style="color:var(--red);margin-bottom:.5rem">No aprobado</div>
-      <p style="color:var(--muted);margin:.5rem 0 1.25rem;font-size:.88rem;line-height:1.5">
-        Respondiste correctamente
-        <strong style="color:var(--text)">${correct} de ${total}</strong> etapas
-        (${pct}%). Se requiere al menos el 50% para completar el escenario.
-      </p>
-      <button class="next-btn show"
-        style="display:block;width:100%;margin-bottom:.6rem"
-        onclick="startScenario(${id})">
-        Reintentar escenario →
-      </button>
-      <button class="back-btn"
-        style="display:block;width:100%;margin:0;text-align:center"
-        onclick="showLanding()">
-        ← Volver al inicio
-      </button>
+// Pantalla de resultados por etapa (se muestra siempre al terminar un escenario)
+function showScenarioResults(id, passed) {
+  const sc      = SCENARIOS[id];
+  const correct = state.stageCorrect;
+  const total   = state.stageTotal;
+  const pct     = total > 0 ? Math.round(correct / total * 100) : 0;
+
+  const stageRows = sc.stages.map((stage, i) => {
+    const res   = state.stageResults.find(r => r.stageIdx === i);
+    const isOk  = res?.correct ?? false;
+    const color = isOk ? 'var(--green)' : 'var(--red)';
+    const lbl   = stage.label || `Etapa ${i + 1}`;
+    const q     = stage.question || '';
+    return `<div style="display:flex;align-items:flex-start;gap:.65rem;padding:.5rem .75rem;border-bottom:1px solid var(--border)">
+      <span style="color:${color};font-weight:700;font-size:.85rem;flex-shrink:0;margin-top:.1rem">${isOk ? '✓' : '✗'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.3px">${lbl}</div>
+        ${q ? `<div style="font-size:.82rem;color:var(--text);margin-top:.1rem">${q}</div>` : ''}
+      </div>
+      <span style="font-size:.75rem;font-weight:700;color:${color};white-space:nowrap;margin-top:.1rem">${isOk ? 'Correcta' : 'Incorrecta'}</span>
     </div>`;
+  }).join('');
+
+  const passColor = passed ? 'var(--green)' : 'var(--red)';
+  const header    = passed ? '✅  Aprobado' : '❌  No aprobado';
+  const cta = passed
+    ? `<button class="next-btn show" style="display:block;width:100%" onclick="finalizeScenario(${id})">Continuar →</button>`
+    : `<button class="next-btn show" style="display:block;width:100%;margin-bottom:.5rem" onclick="startScenario(${id})">Reintentar escenario →</button>
+       <button class="back-btn" style="display:block;width:100%;margin:0;text-align:center" onclick="showLanding()">← Volver al inicio</button>`;
+
+  document.getElementById('action-box').innerHTML = `
+    <div>
+      <div style="text-align:center;padding:.85rem .75rem .5rem;border-bottom:1px solid var(--border)">
+        <div style="font-size:1rem;font-weight:700;color:${passColor};margin-bottom:.15rem">${header}</div>
+        <div style="font-size:1.6rem;font-weight:800;color:${passColor}">${pct}%</div>
+        <div style="font-size:.75rem;color:var(--muted)">${correct} de ${total} etapas correctas</div>
+      </div>
+      <div>${stageRows}</div>
+      <div style="padding:.65rem .75rem .4rem">${cta}</div>
+    </div>`;
+}
+
+// Confirma el escenario como aprobado tras ver la pantalla de resultados
+function finalizeScenario(id) {
+  completeScenario(id);
 }
 
 // Guarda un intento fallido en scenario_results (visible para el admin)
@@ -1629,6 +1668,7 @@ async function saveFailedAttempt(id, correct, total) {
       stages_correct:   correct,
       stages_total:     total,
       stages_completed: total,
+      stage_results:    state.stageResults,
       time_spent_seconds: 0,
       completed_at:     new Date().toISOString()
     });
@@ -1773,6 +1813,7 @@ async function saveScenarioProgress(id) {
       stages_correct:   correct,
       stages_total:     total,
       stages_completed: total,
+      stage_results:    state.stageResults,
       time_spent_seconds: 0,
       completed_at:     new Date().toISOString()
     }).then(() => {});

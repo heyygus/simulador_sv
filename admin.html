@@ -1456,7 +1456,7 @@ async function loadStudentDetail(profileId, safeId) {
     // 2. Obtener todos los intentos (aprobados y reprobados)
     const { data: results, error } = await sb
       .from('scenario_results')
-      .select('scenario_id, scenario_name, passed, wrong_attempts, stages_correct, stages_total, completed_at')
+      .select('scenario_id, scenario_name, passed, wrong_attempts, stages_correct, stages_total, stage_results, completed_at')
       .in('session_id', sessionIds)
       .order('completed_at', { ascending: false });
 
@@ -1467,39 +1467,75 @@ async function loadStudentDetail(profileId, safeId) {
       return;
     }
 
-    // 3. Agrupar por escenario
+    // 3. Agrupar por escenario — guardamos stage_results del mejor intento
     const map = {};
     results.forEach(r => {
       const k = r.scenario_id;
       if (!map[k]) map[k] = { name: r.scenario_name || NAMES[k] || `Escenario ${k}`,
-        attempts: 0, passed: false, bestScore: 0, lastDate: null };
-      map[k].attempts++;
-      if (r.passed) map[k].passed = true;
+        attempts: 0, passed: false, bestScore: 0, lastDate: null,
+        bestStageResults: null, bestIsPassed: false };
+      const m = map[k];
+      m.attempts++;
+      if (r.passed) m.passed = true;
       const s = r.stages_total > 0 && r.stages_correct != null
         ? Math.round(r.stages_correct / r.stages_total * 100) : (r.passed ? 100 : 0);
-      if (s > map[k].bestScore) map[k].bestScore = s;
-      if (!map[k].lastDate || r.completed_at > map[k].lastDate) map[k].lastDate = r.completed_at;
+      // Guardar stage_results del intento con mejor puntaje (preferir aprobados)
+      if (r.stage_results?.length) {
+        if (!m.bestStageResults ||
+            (r.passed && !m.bestIsPassed) ||
+            (r.passed === m.bestIsPassed && s > m.bestScore)) {
+          m.bestStageResults = r.stage_results;
+          m.bestIsPassed = r.passed;
+        }
+      }
+      if (s > m.bestScore) m.bestScore = s;
+      if (!m.lastDate || r.completed_at > m.lastDate) m.lastDate = r.completed_at;
     });
 
-    // 4. Renderizar tabla por escenario (1-5)
+    // 4. Renderizar tabla por escenario (1-5) con desglose de etapas
     const rows = [1,2,3,4,5].map(sid => {
       const m = map[sid];
       if (!m) return `<tr style="opacity:.35">
-        <td>${NAMES[sid]}</td><td style="text-align:center">—</td>
-        <td>—</td><td style="text-align:center">—</td><td>—</td></tr>`;
+        <td colspan="5" style="padding:.4rem .5rem">${NAMES[sid]}</td></tr>`;
       const passHtml = m.passed
         ? `<span style="color:var(--green);font-weight:600">✓ Aprobado</span>`
         : `<span style="color:var(--red);font-weight:600">✗ No aprobado</span>`;
       const sc = m.bestScore > 0
         ? `<span style="color:${scoreColor(m.bestScore)};font-weight:700">${m.bestScore}%</span>`
         : '—';
+
+      // Desglose por etapas (del mejor intento)
+      let stageDetail = '';
+      if (m.bestStageResults?.length) {
+        const stageLabel = m.bestIsPassed
+          ? `<span style="color:var(--muted);font-size:10px">(mejor intento aprobado)</span>`
+          : `<span style="color:var(--muted);font-size:10px">(último intento)</span>`;
+        const chips = m.bestStageResults.map((sr, i) => {
+          const ok    = sr.correct;
+          const color = ok ? 'var(--green)' : 'var(--red)';
+          const bg    = ok ? 'var(--green-dim)' : 'var(--red-dim)';
+          const lbl   = sr.label || `Etapa ${i+1}`;
+          return `<span style="display:inline-flex;align-items:center;gap:.25rem;background:${bg};color:${color};border-radius:4px;padding:.15rem .45rem;font-size:11px;font-weight:600;white-space:nowrap">
+            ${ok ? '✓' : '✗'} ${escHtml(lbl)}
+          </span>`;
+        }).join('');
+        stageDetail = `<tr style="background:rgba(0,0,0,.15)">
+          <td colspan="5" style="padding:.3rem .5rem .4rem 1.5rem;border-bottom:1px solid var(--border)">
+            <div style="display:flex;flex-wrap:wrap;gap:.3rem;align-items:center">
+              ${stageLabel}
+              ${chips}
+            </div>
+          </td>
+        </tr>`;
+      }
+
       return `<tr>
         <td>${escHtml(m.name)}</td>
         <td style="text-align:center;color:var(--muted)">${m.attempts}</td>
         <td>${passHtml}</td>
         <td style="text-align:center">${sc}</td>
         <td style="color:var(--muted);font-size:11px">${m.lastDate ? formatDate(m.lastDate) : '—'}</td>
-      </tr>`;
+      </tr>${stageDetail}`;
     }).join('');
 
     panel.innerHTML = `

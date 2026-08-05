@@ -7,7 +7,8 @@
 
 ALTER TABLE public.scenario_results
   ADD COLUMN IF NOT EXISTS passed        BOOLEAN NOT NULL DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS stages_correct INT     NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS stages_correct INT     NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS stage_results  JSONB;
 
 -- Los registros anteriores tienen completed=TRUE y representan
 -- intentos exitosos, así que se retroalimentan como aprobados.
