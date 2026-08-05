@@ -1,0 +1,1762 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimLab Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── DESIGN TOKENS (matches simulador.html) ─────────────────── */
+:root {
+  --bg:         #0d1117;
+  --surface:    #161b22;
+  --surface2:   #21262d;
+  --border:     #30363d;
+  --text:       #e6edf3;
+  --muted:      #8b949e;
+  --green:      #3fb950;
+  --green-dim:  #122a1a;
+  --amber:      #d29922;
+  --amber-dim:  #2a1f00;
+  --red:        #f85149;
+  --red-dim:    #2a0a09;
+  --blue:       #58a6ff;
+  --blue-dim:   #0c1e40;
+  --sidebar-w:  224px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── UTILITY ─────────────────────────────────────────────── */
+.hidden { display: none !important; }
+
+button {
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  border-radius: 6px;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+button:disabled { opacity: .45; cursor: default; }
+
+input, select, textarea {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: .5rem .75rem;
+  outline: none;
+  width: 100%;
+  transition: border-color .15s;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+input::placeholder, textarea::placeholder { color: var(--muted); }
+
+label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: .3rem;
+  font-weight: 500;
+}
+
+.form-row {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.form-group { display: flex; flex-direction: column; }
+
+.btn-primary {
+  background: var(--blue);
+  color: #0d1117;
+  font-weight: 600;
+  padding: .5rem 1rem;
+}
+.btn-primary:hover:not(:disabled) { background: #79b8ff; }
+
+.btn-secondary {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: .45rem .9rem;
+}
+.btn-secondary:hover:not(:disabled) { background: var(--border); }
+
+.btn-danger {
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: .45rem .9rem;
+}
+.btn-danger:hover:not(:disabled) { background: #3f0a09; }
+
+.btn-green {
+  background: var(--green-dim);
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: .45rem .9rem;
+  font-weight: 600;
+}
+.btn-green:hover:not(:disabled) { background: #1a3d22; }
+
+.btn-icon {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: .3rem .55rem;
+  font-size: 12px;
+  border-radius: 5px;
+}
+.btn-icon:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+/* badges */
+.badge {
+  display: inline-block;
+  padding: .18rem .55rem;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.badge-green  { background: var(--green-dim);  color: var(--green); }
+.badge-amber  { background: var(--amber-dim);  color: var(--amber); }
+.badge-red    { background: var(--red-dim);    color: var(--red); }
+.badge-blue   { background: var(--blue-dim);   color: var(--blue); }
+.badge-muted  { background: var(--surface2);   color: var(--muted); }
+
+/* tables */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+  text-align: left;
+  padding: .55rem .75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+tbody td {
+  padding: .6rem .75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface2); }
+
+/* ── TOAST ────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  top: 1.2rem;
+  right: 1.2rem;
+  padding: .7rem 1.1rem;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .25s, transform .25s;
+  max-width: 320px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.ok   { background: var(--green-dim); border: 1px solid var(--green); color: var(--green); }
+.toast.err  { background: var(--red-dim);   border: 1px solid var(--red);   color: var(--red); }
+
+/* ── AUTH VIEW ────────────────────────────────────────────── */
+#auth-view {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 2rem 2.25rem;
+  width: 100%;
+  max-width: 380px;
+}
+.auth-logo {
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+.auth-logo h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--blue), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.auth-logo p {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: .3rem;
+}
+.auth-form .form-group { margin-bottom: .9rem; }
+.auth-error {
+  background: var(--red-dim);
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: .6rem .75rem;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: .85rem;
+}
+.auth-form .btn-primary { width: 100%; margin-top: .25rem; padding: .6rem; }
+
+/* ── APP LAYOUT ───────────────────────────────────────────── */
+#dashboard-view {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ──────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.sidebar-logo {
+  padding: 1.25rem 1.25rem .75rem;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--blue), var(--green));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.sidebar-logo small { color: var(--muted); font-size: 11px; display: block; margin-top: .15rem; }
+
+.sidebar-nav {
+  flex: 1;
+  padding: .75rem .5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  padding: .55rem .75rem;
+  border-radius: 7px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: background .15s, color .15s;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+}
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--blue-dim); color: var(--blue); }
+.nav-icon { font-size: 15px; width: 18px; text-align: center; flex-shrink: 0; }
+
+.sidebar-footer {
+  padding: .85rem 1rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+.prof-name {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.prof-email { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: .4rem .75rem;
+  font-size: 12px;
+  width: 100%;
+  text-align: left;
+  border-radius: 6px;
+}
+.btn-logout:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+
+/* ── MAIN CONTENT ─────────────────────────────────────────── */
+#main-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+  min-width: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+.page-header h2 { font-size: 1.2rem; font-weight: 700; }
+.page-header p  { color: var(--muted); font-size: 13px; margin-top: .15rem; }
+
+/* ── STAT TILES ───────────────────────────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+.stat-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+}
+.stat-tile .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 600; margin-bottom: .4rem; }
+.stat-tile .value { font-size: 1.9rem; font-weight: 700; line-height: 1; }
+.stat-tile .sub   { font-size: 11px; color: var(--muted); margin-top: .3rem; }
+.val-blue  { color: var(--blue); }
+.val-green { color: var(--green); }
+.val-amber { color: var(--amber); }
+.val-text  { color: var(--text); }
+
+/* ── SURFACE BOX ──────────────────────────────────────────── */
+.box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.box-hdr {
+  padding: .85rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.box-hdr h3  { font-size: .95rem; font-weight: 600; }
+.box-body    { padding: 1.1rem; }
+.box-body-sm { padding: .75rem 1.1rem; }
+
+/* ── INLINE FORMS ─────────────────────────────────────────── */
+.inline-form {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.1rem;
+  margin-bottom: 1rem;
+}
+.inline-form h4 { font-size: .88rem; font-weight: 600; margin-bottom: .9rem; color: var(--blue); }
+.inline-form .form-row { margin-bottom: .75rem; }
+.inline-form .actions { display: flex; gap: .5rem; margin-top: .85rem; }
+
+/* ── TOGGLE ───────────────────────────────────────────────── */
+.toggle-wrap { display: flex; align-items: center; gap: .5rem; }
+.toggle {
+  width: 34px;
+  height: 18px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  position: relative;
+  cursor: pointer;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--green); border-color: var(--green); }
+.toggle::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--muted);
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: left .2s, background .2s;
+}
+.toggle.on::after { left: 18px; background: #fff; }
+
+/* ── CODE CHIP ────────────────────────────────────────────── */
+.code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  background: var(--blue-dim);
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  padding: .2rem .55rem;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: .5px;
+}
+
+/* ── EXPANDABLE TABLE ROW ─────────────────────────────────── */
+.expandable-row { cursor: pointer; }
+.expandable-row:hover td { background: var(--blue-dim) !important; }
+.detail-row td {
+  padding: 0 !important;
+  background: var(--surface2) !important;
+}
+.detail-inner {
+  padding: .75rem 1.1rem;
+  border-top: 1px solid var(--border);
+}
+.detail-inner .dtable { margin-top: .5rem; }
+.detail-inner .dtable td { padding: .35rem .6rem; font-size: 12px; border-bottom: 1px solid var(--border); }
+.detail-inner .dtable th { padding: .35rem .6rem; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .3px; border-bottom: 1px solid var(--border); text-align: left; }
+.detail-inner .dtable tr:last-child td { border-bottom: none; }
+
+/* ── FILTERS ROW ──────────────────────────────────────────── */
+.filters-row {
+  display: flex;
+  gap: .65rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.filters-row .form-group { min-width: 180px; max-width: 240px; flex: 1; }
+.filters-row .form-group label { margin-bottom: .25rem; }
+
+/* ── CODE DISPLAY ON STUDENT CREATION ────────────────────── */
+.new-code-banner {
+  background: var(--green-dim);
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  padding: .85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-bottom: .75rem;
+  flex-wrap: wrap;
+}
+.new-code-banner .info { font-size: 13px; }
+.new-code-banner .info strong { color: var(--green); }
+.new-code-banner .code { font-family: 'Consolas', monospace; font-size: 1.4rem; font-weight: 700; color: var(--green); letter-spacing: 2px; }
+
+/* ── EMPTY STATE ──────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+}
+.empty-state .icon { font-size: 2rem; margin-bottom: .5rem; }
+.empty-state p { font-size: .88rem; }
+
+/* ── PRINT ────────────────────────────────────────────────── */
+#print-overlay {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 8888;
+  overflow-y: auto;
+  padding: 1.5rem;
+}
+.print-close {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: .45rem .9rem;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 8889;
+}
+.print-close:hover { background: var(--border); }
+.print-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  color: #1a1a2e;
+}
+.print-header h2 { font-size: 1.3rem; font-weight: 700; }
+.print-header p  { font-size: 13px; color: #555; margin-top: .3rem; }
+.codes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: .85rem;
+}
+.code-card {
+  border: 1.5px solid #ccc;
+  border-radius: 10px;
+  padding: .9rem 1rem;
+  background: #fff;
+  color: #1a1a2e;
+}
+.code-card .student-name { font-size: .88rem; font-weight: 600; margin-bottom: .15rem; color: #333; }
+.code-card .student-cedula { font-size: .75rem; color: #777; margin-bottom: .45rem; }
+.code-card .the-code {
+  font-family: 'Consolas', monospace;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #0c3868;
+  border: 2px dashed #0c3868;
+  text-align: center;
+  padding: .4rem;
+  border-radius: 6px;
+  background: #e8f0fe;
+}
+.code-card .course-label { font-size: .72rem; color: #888; margin-top: .4rem; text-align: center; }
+.print-footer { text-align: center; color: #888; font-size: 12px; margin-top: 1.5rem; }
+
+@media print {
+  #print-overlay { position: static; background: #fff; z-index: auto; }
+  .print-close { display: none; }
+  body > *:not(#print-overlay) { display: none !important; }
+  #print-overlay { display: block !important; }
+  .codes-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── RESPONSIVE ───────────────────────────────────────────── */
+@media (max-width: 720px) {
+  #sidebar { width: 60px; }
+  .sidebar-logo h2, .sidebar-logo small,
+  .nav-item span, .prof-name, .prof-email, .btn-logout span { display: none; }
+  .nav-item { justify-content: center; padding: .55rem; }
+  .sidebar-footer { align-items: center; }
+  .btn-logout { width: auto; padding: .4rem; }
+  #main-content { padding: 1.25rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+     AUTH VIEW
+══════════════════════════════════════════════════════════ -->
+<div id="auth-view">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>SimLab Admin</h1>
+      <p>Panel de administración del laboratorio</p>
+    </div>
+    <div class="auth-form">
+      <div id="auth-error" class="auth-error hidden"></div>
+      <div class="form-group">
+        <label for="inp-email">Correo electrónico</label>
+        <input type="email" id="inp-email" placeholder="profesor@universidad.edu" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="inp-password">Contraseña</label>
+        <input type="password" id="inp-password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn-primary" id="btn-login" onclick="doLogin()">Iniciar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     DASHBOARD VIEW
+══════════════════════════════════════════════════════════ -->
+<div id="dashboard-view" class="hidden">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <h2>SimLab Admin</h2>
+      <small>Laboratorio Eléctrico</small>
+    </div>
+    <div class="sidebar-nav">
+      <button class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
+        <span class="nav-icon">📊</span>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" id="nav-cursos" onclick="showSection('cursos')">
+        <span class="nav-icon">📚</span>
+        <span>Cursos</span>
+      </button>
+      <button class="nav-item" id="nav-estudiantes" onclick="showSection('estudiantes')">
+        <span class="nav-icon">👥</span>
+        <span>Estudiantes</span>
+      </button>
+      <button class="nav-item" id="nav-resultados" onclick="showSection('resultados')">
+        <span class="nav-icon">📋</span>
+        <span>Resultados</span>
+      </button>
+    </div>
+    <div class="sidebar-footer">
+      <div>
+        <div class="prof-name" id="sidebar-name">Cargando...</div>
+        <div class="prof-email" id="sidebar-email"></div>
+      </div>
+      <button class="btn-logout" onclick="doLogout()">
+        <span>Cerrar sesión</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="main-content">
+
+    <!-- ── SECTION: DASHBOARD ──────────────────────────────── -->
+    <section id="section-dashboard">
+      <div class="page-header">
+        <div>
+          <h2>Dashboard</h2>
+          <p>Resumen general de actividad del simulador</p>
+        </div>
+        <button class="btn-secondary" onclick="loadDashboardData()">Actualizar</button>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-tile">
+          <div class="label">Cursos activos</div>
+          <div class="value val-blue" id="stat-courses">—</div>
+          <div class="sub">en este período</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Total estudiantes</div>
+          <div class="value val-text" id="stat-students">—</div>
+          <div class="sub">registrados</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Sesiones completadas</div>
+          <div class="value val-green" id="stat-completed">—</div>
+          <div class="sub">simulaciones finalizadas</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Promedio de puntaje</div>
+          <div class="value val-amber" id="stat-avg">—</div>
+          <div class="sub">de 100 puntos</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-hdr">
+          <h3>Sesiones recientes</h3>
+          <span id="recent-count" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-recent">
+            <thead>
+              <tr>
+                <th>Estudiante</th>
+                <th>Curso</th>
+                <th>Puntaje</th>
+                <th>Escenarios</th>
+                <th>Intentos errados</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-recent">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: CURSOS ─────────────────────────────────── -->
+    <section id="section-cursos" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2>Cursos</h2>
+          <p>Administra los cursos y secciones asignadas</p>
+        </div>
+        <button class="btn-primary" onclick="toggleCourseForm()">+ Nuevo curso</button>
+      </div>
+
+      <div id="course-form-wrap" class="hidden">
+        <div class="inline-form">
+          <h4>Nuevo curso</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cf-name">Nombre del curso</label>
+              <input type="text" id="cf-name" placeholder="Laboratorio de Convertidores Eléctricos">
+            </div>
+            <div class="form-group">
+              <label for="cf-section">Sección</label>
+              <input type="text" id="cf-section" placeholder="01">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cf-semester">Semestre / Lapso</label>
+              <input type="text" id="cf-semester" placeholder="2026-1">
+            </div>
+            <div class="form-group">
+              <label for="cf-code">Código de asignatura</label>
+              <input type="text" id="cf-code" placeholder="41151" value="41151">
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="createCourse()">Guardar curso</button>
+            <button class="btn-secondary" onclick="toggleCourseForm()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="tbl-wrap">
+          <table id="tbl-courses">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Sección</th>
+                <th>Lapso</th>
+                <th>Código</th>
+                <th>Estudiantes</th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-courses">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: ESTUDIANTES ───────────────────────────── -->
+    <section id="section-estudiantes" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2>Estudiantes</h2>
+          <p>Gestión de estudiantes y códigos de acceso</p>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn-green" onclick="printCodes()" id="btn-print-codes">Imprimir códigos</button>
+          <button class="btn-primary" onclick="toggleStudentForm()" id="btn-add-student">+ Añadir estudiante</button>
+        </div>
+      </div>
+
+      <div class="filters-row" style="margin-bottom:.85rem">
+        <div class="form-group">
+          <label for="st-course-filter">Filtrar por curso</label>
+          <select id="st-course-filter" onchange="onStudentCourseChange()">
+            <option value="">Seleccionar curso...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="new-code-display" class="hidden"></div>
+
+      <div id="student-form-wrap" class="hidden">
+        <div class="inline-form">
+          <h4>Añadir estudiante</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sf-name">Nombre completo</label>
+              <input type="text" id="sf-name" placeholder="Juan Carlos Pérez">
+            </div>
+            <div class="form-group">
+              <label for="sf-cedula">Cédula</label>
+              <input type="text" id="sf-cedula" placeholder="V-12345678">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="sf-email">Correo electrónico (opcional)</label>
+              <input type="email" id="sf-email" placeholder="estudiante@email.com">
+            </div>
+            <div class="form-group">
+              <label for="sf-code">Código de acceso (dejar en blanco para generar automáticamente)</label>
+              <input type="text" id="sf-code" placeholder="AUTO" maxlength="6" style="text-transform:uppercase">
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="createStudent()">Guardar estudiante</button>
+            <button class="btn-secondary" onclick="toggleStudentForm()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="tbl-wrap">
+          <table id="tbl-students">
+            <thead>
+              <tr>
+                <th>Nombre completo</th>
+                <th>Cédula</th>
+                <th>Correo</th>
+                <th>Código de acceso</th>
+                <th>Activo</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-students">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Selecciona un curso para ver los estudiantes.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SECTION: RESULTADOS ────────────────────────────── -->
+    <section id="section-resultados" class="hidden">
+      <div class="page-header">
+        <div>
+          <h2>Resultados</h2>
+          <p>Historial de sesiones del simulador</p>
+        </div>
+        <button class="btn-secondary" onclick="loadResults()">Actualizar</button>
+      </div>
+
+      <div class="filters-row">
+        <div class="form-group">
+          <label for="res-course-filter">Curso</label>
+          <select id="res-course-filter" onchange="onResultsCourseChange()">
+            <option value="">Todos los cursos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="res-student-filter">Estudiante</label>
+          <select id="res-student-filter" onchange="loadResults()">
+            <option value="">Todos los estudiantes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="res-status-filter">Estado</label>
+          <select id="res-status-filter" onchange="loadResults()">
+            <option value="">Todos</option>
+            <option value="completed">Completadas</option>
+            <option value="in_progress">En progreso</option>
+            <option value="abandoned">Abandonadas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="stat-grid" style="margin-bottom:1.25rem" id="res-summary-grid">
+        <div class="stat-tile">
+          <div class="label">Puntaje promedio</div>
+          <div class="value val-amber" id="res-avg-score">—</div>
+          <div class="sub">sesiones completadas</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Tasa de completado</div>
+          <div class="value val-green" id="res-completion">—</div>
+          <div class="sub">del total de sesiones</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Escenario con más fallos</div>
+          <div class="value val-red" id="res-hardest" style="font-size:1.2rem;padding-top:.3rem">—</div>
+          <div class="sub">mayor número de intentos errados</div>
+        </div>
+        <div class="stat-tile">
+          <div class="label">Total de sesiones</div>
+          <div class="value val-text" id="res-total">—</div>
+          <div class="sub">en el filtro actual</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <div class="box-hdr">
+          <h3>Sesiones</h3>
+          <span style="font-size:12px;color:var(--muted)">Haz clic en una fila para ver el detalle por escenario</span>
+        </div>
+        <div class="tbl-wrap">
+          <table id="tbl-results">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Estudiante</th>
+                <th>Curso</th>
+                <th>Puntaje</th>
+                <th>Escenarios</th>
+                <th>Intentos errados</th>
+                <th>Estado</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-results">
+              <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">Cargando resultados...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- /main-content -->
+</div><!-- /dashboard-view -->
+
+<!-- ══════════════════════════════════════════════════════════
+     PRINT OVERLAY
+══════════════════════════════════════════════════════════ -->
+<div id="print-overlay" class="hidden">
+  <button class="print-close" onclick="closePrintOverlay()">Cerrar</button>
+  <div id="print-content"></div>
+  <div class="print-footer" id="print-footer"></div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast" class="toast"></div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── CONFIGURATION ─────────────────────────────────────────────
+// Replace these two values with your Supabase project credentials.
+// Dashboard → Project Settings → API
+const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+// Guard: show setup instructions if credentials are missing
+if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+  document.getElementById('auth-view').innerHTML = `
+    <div style="max-width:480px;margin:auto;padding:2rem">
+      <div style="background:var(--surface);border:1px solid var(--amber);border-radius:14px;padding:2rem">
+        <h2 style="color:var(--amber);margin-bottom:1rem">⚙️ Configuración requerida</h2>
+        <p style="color:var(--text);margin-bottom:.75rem">
+          Abre <strong>admin.html</strong> en un editor y reemplaza las siguientes constantes
+          al inicio del bloque <code>&lt;script&gt;</code>:
+        </p>
+        <pre style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:12px;overflow-x:auto;color:var(--blue)">const SUPABASE_URL      = 'https://xxxx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGci...';</pre>
+        <p style="color:var(--muted);font-size:12px;margin-top:.75rem">
+          Encuéntralos en tu proyecto de Supabase: <em>Project Settings → API</em>
+        </p>
+      </div>
+    </div>`;
+  throw new Error('Supabase credentials not configured');
+}
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── APPLICATION STATE ─────────────────────────────────────────
+const state = {
+  user:                    null,
+  profile:                 null,
+  courses:                 [],
+  currentSection:          'dashboard',
+  studentCourseId:         null,
+  resultsCourseId:         null,
+  expandedSessionIds:      new Set()
+};
+
+// ── AUTH STATE LISTENER ────────────────────────────────────────
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session && session.user) {
+    state.user = session.user;
+    await loadProfile();
+    showDashboardView();
+    loadDashboardData();
+  } else {
+    state.user    = null;
+    state.profile = null;
+    showAuthView();
+  }
+});
+
+// ── AUTH FUNCTIONS ─────────────────────────────────────────────
+async function doLogin() {
+  const email    = document.getElementById('inp-email').value.trim();
+  const password = document.getElementById('inp-password').value;
+  const errEl    = document.getElementById('auth-error');
+  const btnEl    = document.getElementById('btn-login');
+
+  errEl.classList.add('hidden');
+
+  if (!email || !password) {
+    errEl.textContent = 'Por favor ingresa tu correo y contraseña.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  btnEl.disabled  = true;
+  btnEl.textContent = 'Iniciando sesión...';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+
+  btnEl.disabled  = false;
+  btnEl.textContent = 'Iniciar sesión';
+
+  if (error) {
+    errEl.textContent = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+}
+
+// Allow Enter key on password field
+document.getElementById('inp-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ── PROFILE ────────────────────────────────────────────────────
+async function loadProfile() {
+  const { data, error } = await sb
+    .from('profiles')
+    .select('*')
+    .eq('id', state.user.id)
+    .single();
+
+  if (data) {
+    state.profile = data;
+    document.getElementById('sidebar-name').textContent  = data.name  || 'Profesor';
+    document.getElementById('sidebar-email').textContent = data.email || state.user.email;
+  } else {
+    document.getElementById('sidebar-name').textContent  = state.user.email.split('@')[0];
+    document.getElementById('sidebar-email').textContent = state.user.email;
+  }
+}
+
+// ── VIEW SWITCHING ─────────────────────────────────────────────
+function showAuthView() {
+  document.getElementById('auth-view').classList.remove('hidden');
+  document.getElementById('dashboard-view').classList.add('hidden');
+}
+
+function showDashboardView() {
+  document.getElementById('auth-view').classList.add('hidden');
+  document.getElementById('dashboard-view').classList.remove('hidden');
+}
+
+function showSection(name) {
+  const sections = ['dashboard', 'cursos', 'estudiantes', 'resultados'];
+  sections.forEach(s => {
+    document.getElementById('section-' + s).classList.add('hidden');
+    document.getElementById('nav-' + s).classList.remove('active');
+  });
+  document.getElementById('section-' + name).classList.remove('hidden');
+  document.getElementById('nav-' + name).classList.add('active');
+  state.currentSection = name;
+
+  if      (name === 'dashboard')    loadDashboardData();
+  else if (name === 'cursos')       loadCourses();
+  else if (name === 'estudiantes')  initStudentSection();
+  else if (name === 'resultados')   initResultsSection();
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+async function loadDashboardData() {
+  document.getElementById('stat-courses').textContent   = '...';
+  document.getElementById('stat-students').textContent  = '...';
+  document.getElementById('stat-completed').textContent = '...';
+  document.getElementById('stat-avg').textContent       = '...';
+
+  try {
+    // Get all professor's courses
+    const { data: courses, error: cErr } = await sb
+      .from('courses')
+      .select('id, active')
+      .eq('professor_id', state.user.id);
+
+    if (cErr) throw cErr;
+
+    const allIds    = courses.map(c => c.id);
+    const activeIds = courses.filter(c => c.active).map(c => c.id);
+
+    document.getElementById('stat-courses').textContent = activeIds.length;
+
+    if (allIds.length === 0) {
+      document.getElementById('stat-students').textContent  = 0;
+      document.getElementById('stat-completed').textContent = 0;
+      document.getElementById('stat-avg').textContent       = '—';
+      renderRecentSessions([]);
+      return;
+    }
+
+    // Students count
+    const { count: stuCount } = await sb
+      .from('students')
+      .select('*', { count: 'exact', head: true })
+      .in('course_id', allIds);
+
+    document.getElementById('stat-students').textContent = stuCount || 0;
+
+    // Sessions
+    const { data: sessions, error: sErr } = await sb
+      .from('sessions')
+      .select('id, status, total_score, started_at')
+      .in('course_id', allIds);
+
+    if (sErr) throw sErr;
+
+    const completed = sessions.filter(s => s.status === 'completed');
+    document.getElementById('stat-completed').textContent = completed.length;
+
+    if (completed.length > 0) {
+      const avg = completed.reduce((acc, s) => acc + (parseFloat(s.total_score) || 0), 0) / completed.length;
+      document.getElementById('stat-avg').textContent = avg.toFixed(1);
+    } else {
+      document.getElementById('stat-avg').textContent = '—';
+    }
+
+    // Recent sessions (last 10)
+    const { data: recent, error: rErr } = await sb
+      .from('sessions')
+      .select('id, status, total_score, scenarios_completed, total_wrong_attempts, started_at, students(full_name), courses(name, section)')
+      .in('course_id', allIds)
+      .order('started_at', { ascending: false })
+      .limit(10);
+
+    if (rErr) throw rErr;
+    renderRecentSessions(recent || []);
+
+  } catch (err) {
+    showToast('Error al cargar datos: ' + err.message, 'err');
+  }
+}
+
+function renderRecentSessions(sessions) {
+  const tbody = document.getElementById('tbody-recent');
+  document.getElementById('recent-count').textContent = sessions.length
+    ? sessions.length + ' sesión' + (sessions.length !== 1 ? 'es' : '')
+    : '';
+
+  if (!sessions.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📭</div><p>No hay sesiones registradas aún.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = sessions.map(s => {
+    const studentName = s.students ? escHtml(s.students.full_name) : '<span style="color:var(--muted)">Anónimo</span>';
+    const courseName  = s.courses  ? escHtml(s.courses.name + (s.courses.section ? ' - ' + s.courses.section : '')) : '—';
+    const scoreHtml   = s.total_score != null ? `<span style="color:${scoreColor(s.total_score)};font-weight:700">${parseFloat(s.total_score).toFixed(1)}</span>` : '—';
+    return `<tr>
+      <td>${studentName}</td>
+      <td style="color:var(--muted)">${courseName}</td>
+      <td>${scoreHtml}</td>
+      <td>${s.scenarios_completed || 0}/5</td>
+      <td>${s.total_wrong_attempts || 0}</td>
+      <td>${statusBadge(s.status)}</td>
+      <td style="color:var(--muted);white-space:nowrap">${formatDate(s.started_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── COURSES ────────────────────────────────────────────────────
+function toggleCourseForm() {
+  const wrap = document.getElementById('course-form-wrap');
+  wrap.classList.toggle('hidden');
+  if (!wrap.classList.contains('hidden')) {
+    document.getElementById('cf-name').focus();
+  }
+}
+
+async function loadCourses() {
+  const tbody = document.getElementById('tbody-courses');
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
+
+  try {
+    const { data, error } = await sb
+      .from('courses')
+      .select('*, students(count)')
+      .eq('professor_id', state.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    state.courses = data || [];
+
+    if (!state.courses.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="icon">📚</div><p>No hay cursos creados. Crea tu primer curso con el botón "Nuevo curso".</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = state.courses.map(c => {
+      const stuCount = Array.isArray(c.students) && c.students[0] ? c.students[0].count : 0;
+      return `<tr>
+        <td><strong>${escHtml(c.name)}</strong></td>
+        <td>${escHtml(c.section || '—')}</td>
+        <td>${escHtml(c.semester || '—')}</td>
+        <td style="font-family:monospace;color:var(--muted)">${escHtml(c.subject_code)}</td>
+        <td>${stuCount}</td>
+        <td>
+          <div class="toggle-wrap">
+            <div class="toggle ${c.active ? 'on' : ''}" onclick="toggleCourseActive('${c.id}', ${!c.active})" title="${c.active ? 'Desactivar' : 'Activar'}"></div>
+          </div>
+        </td>
+        <td>
+          <button class="btn-icon" onclick="viewCourseStudents('${c.id}')">Ver estudiantes</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
+    showToast('Error al cargar cursos: ' + err.message, 'err');
+  }
+}
+
+async function createCourse() {
+  const name    = document.getElementById('cf-name').value.trim();
+  const section = document.getElementById('cf-section').value.trim();
+  const sem     = document.getElementById('cf-semester').value.trim();
+  const code    = document.getElementById('cf-code').value.trim() || '41151';
+
+  if (!name) {
+    showToast('El nombre del curso es obligatorio.', 'err');
+    document.getElementById('cf-name').focus();
+    return;
+  }
+
+  const { error } = await sb.from('courses').insert({
+    professor_id: state.user.id,
+    name,
+    section:      section || null,
+    semester:     sem     || null,
+    subject_code: code,
+    active:       true
+  });
+
+  if (error) {
+    showToast('Error al guardar: ' + error.message, 'err');
+    return;
+  }
+
+  showToast('Curso creado correctamente.', 'ok');
+  document.getElementById('cf-name').value    = '';
+  document.getElementById('cf-section').value = '';
+  document.getElementById('cf-semester').value = '';
+  document.getElementById('cf-code').value    = '41151';
+  document.getElementById('course-form-wrap').classList.add('hidden');
+  loadCourses();
+}
+
+async function toggleCourseActive(id, newVal) {
+  const { error } = await sb.from('courses').update({ active: newVal }).eq('id', id);
+  if (error) { showToast('Error al actualizar estado: ' + error.message, 'err'); return; }
+  loadCourses();
+}
+
+function viewCourseStudents(courseId) {
+  showSection('estudiantes');
+  state.studentCourseId = courseId;
+  const sel = document.getElementById('st-course-filter');
+  if (sel.querySelector(`option[value="${courseId}"]`)) {
+    sel.value = courseId;
+    loadStudents(courseId);
+  }
+}
+
+// ── STUDENTS ───────────────────────────────────────────────────
+async function initStudentSection() {
+  // Populate course dropdown
+  const sel = document.getElementById('st-course-filter');
+  const prevVal = state.studentCourseId || sel.value;
+
+  // Refresh courses list if needed
+  if (!state.courses.length) {
+    const { data } = await sb
+      .from('courses')
+      .select('id, name, section, semester')
+      .eq('professor_id', state.user.id)
+      .order('created_at', { ascending: false });
+    state.courses = data || [];
+  }
+
+  sel.innerHTML = '<option value="">Seleccionar curso...</option>'
+    + state.courses.map(c =>
+        `<option value="${c.id}">${escHtml(c.name)}${c.section ? ' - ' + escHtml(c.section) : ''}${c.semester ? ' (' + escHtml(c.semester) + ')' : ''}</option>`
+      ).join('');
+
+  if (prevVal) {
+    sel.value = prevVal;
+    if (sel.value) loadStudents(sel.value);
+  }
+}
+
+function onStudentCourseChange() {
+  const courseId = document.getElementById('st-course-filter').value;
+  state.studentCourseId = courseId || null;
+  document.getElementById('new-code-display').classList.add('hidden');
+  document.getElementById('student-form-wrap').classList.add('hidden');
+  if (courseId) {
+    loadStudents(courseId);
+  } else {
+    document.getElementById('tbody-students').innerHTML =
+      `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Selecciona un curso para ver los estudiantes.</td></tr>`;
+  }
+}
+
+async function loadStudents(courseId) {
+  const tbody = document.getElementById('tbody-students');
+  tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
+
+  try {
+    const { data, error } = await sb
+      .from('students')
+      .select('*')
+      .eq('course_id', courseId)
+      .order('full_name');
+
+    if (error) throw error;
+
+    if (!data || !data.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">👤</div><p>No hay estudiantes en este curso todavía.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = data.map(s => `<tr>
+      <td><strong>${escHtml(s.full_name)}</strong></td>
+      <td style="font-family:monospace;color:var(--muted)">${escHtml(s.cedula)}</td>
+      <td style="color:var(--muted)">${s.email ? escHtml(s.email) : '—'}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:.5rem">
+          <span class="code-chip">${escHtml(s.access_code || '—')}</span>
+          ${s.access_code ? `<button class="btn-icon" title="Copiar código" onclick="copyCode('${escHtml(s.access_code)}')">Copiar</button>` : ''}
+        </div>
+      </td>
+      <td>
+        <div class="toggle-wrap">
+          <div class="toggle ${s.active ? 'on' : ''}" onclick="toggleStudentActive('${s.id}', ${!s.active})" title="${s.active ? 'Desactivar' : 'Activar'}"></div>
+        </div>
+      </td>
+    </tr>`).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
+    showToast('Error al cargar estudiantes: ' + err.message, 'err');
+  }
+}
+
+function toggleStudentForm() {
+  const wrap = document.getElementById('student-form-wrap');
+  wrap.classList.toggle('hidden');
+  if (!wrap.classList.contains('hidden')) {
+    if (!state.studentCourseId) {
+      showToast('Selecciona un curso antes de añadir estudiantes.', 'err');
+      wrap.classList.add('hidden');
+      return;
+    }
+    document.getElementById('sf-name').focus();
+  }
+}
+
+async function createStudent() {
+  const courseId = state.studentCourseId;
+  if (!courseId) {
+    showToast('Selecciona un curso primero.', 'err');
+    return;
+  }
+
+  const full_name = document.getElementById('sf-name').value.trim();
+  const cedula    = document.getElementById('sf-cedula').value.trim();
+  const email     = document.getElementById('sf-email').value.trim() || null;
+  const codeInput = document.getElementById('sf-code').value.trim().toUpperCase() || null;
+
+  if (!full_name) { showToast('El nombre completo es obligatorio.', 'err'); return; }
+  if (!cedula)    { showToast('La cédula es obligatoria.', 'err'); return; }
+
+  const payload = { course_id: courseId, full_name, cedula, email, active: true };
+  if (codeInput) payload.access_code = codeInput;
+
+  const { data, error } = await sb.from('students').insert(payload).select().single();
+
+  if (error) {
+    if (error.code === '23505') {
+      showToast('El código de acceso ya está en uso. Deja el campo vacío para generar uno automáticamente.', 'err');
+    } else {
+      showToast('Error al guardar estudiante: ' + error.message, 'err');
+    }
+    return;
+  }
+
+  // Show the generated access code prominently
+  const banner = document.getElementById('new-code-display');
+  banner.classList.remove('hidden');
+  banner.innerHTML = `
+    <div class="new-code-banner">
+      <div class="info">
+        Estudiante <strong>${escHtml(full_name)}</strong> registrado correctamente.
+        Su código de acceso es:
+      </div>
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <div class="code">${escHtml(data.access_code)}</div>
+        <button class="btn-icon" onclick="copyCode('${escHtml(data.access_code)}')">Copiar</button>
+      </div>
+    </div>`;
+
+  showToast('Estudiante añadido. Código: ' + data.access_code, 'ok');
+
+  // Clear form
+  document.getElementById('sf-name').value   = '';
+  document.getElementById('sf-cedula').value = '';
+  document.getElementById('sf-email').value  = '';
+  document.getElementById('sf-code').value   = '';
+  document.getElementById('student-form-wrap').classList.add('hidden');
+
+  loadStudents(courseId);
+}
+
+async function toggleStudentActive(id, newVal) {
+  const { error } = await sb.from('students').update({ active: newVal }).eq('id', id);
+  if (error) { showToast('Error al actualizar: ' + error.message, 'err'); return; }
+  if (state.studentCourseId) loadStudents(state.studentCourseId);
+}
+
+function copyCode(code) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => showToast('Código copiado: ' + code, 'ok'));
+  } else {
+    showToast('Código: ' + code, 'ok');
+  }
+}
+
+// ── PRINT CODES ────────────────────────────────────────────────
+async function printCodes() {
+  const courseId = state.studentCourseId;
+  if (!courseId) {
+    showToast('Selecciona un curso antes de imprimir.', 'err');
+    return;
+  }
+
+  const course = state.courses.find(c => c.id === courseId);
+
+  const { data: students, error } = await sb
+    .from('students')
+    .select('full_name, cedula, access_code, active')
+    .eq('course_id', courseId)
+    .eq('active', true)
+    .order('full_name');
+
+  if (error) { showToast('Error al cargar estudiantes: ' + error.message, 'err'); return; }
+
+  if (!students || !students.length) {
+    showToast('No hay estudiantes activos en este curso.', 'err');
+    return;
+  }
+
+  const courseName = course
+    ? course.name + (course.section ? ' - Sección ' + course.section : '') + (course.semester ? ' · ' + course.semester : '')
+    : 'Curso';
+
+  const codesHtml = students.map(s => `
+    <div class="code-card">
+      <div class="student-name">${escHtml(s.full_name)}</div>
+      <div class="student-cedula">Cédula: ${escHtml(s.cedula)}</div>
+      <div class="the-code">${escHtml(s.access_code || '—')}</div>
+      <div class="course-label">${escHtml(courseName)}</div>
+    </div>`).join('');
+
+  document.getElementById('print-content').innerHTML = `
+    <div class="print-header">
+      <h2>Códigos de Acceso al SimLab</h2>
+      <p>${escHtml(courseName)}</p>
+      <p style="margin-top:.3rem">Total: ${students.length} estudiante${students.length !== 1 ? 's' : ''}</p>
+    </div>
+    <div class="codes-grid">${codesHtml}</div>`;
+
+  document.getElementById('print-footer').textContent =
+    'SimLab · Laboratorio de Convertidores Eléctricos · Generado el ' + new Date().toLocaleDateString('es-VE', { dateStyle: 'long' });
+
+  document.getElementById('print-overlay').classList.remove('hidden');
+}
+
+function closePrintOverlay() {
+  document.getElementById('print-overlay').classList.add('hidden');
+}
+
+// ── RESULTS ────────────────────────────────────────────────────
+async function initResultsSection() {
+  // Populate course dropdown in results section
+  if (!state.courses.length) {
+    const { data } = await sb
+      .from('courses')
+      .select('id, name, section, semester')
+      .eq('professor_id', state.user.id)
+      .order('created_at', { ascending: false });
+    state.courses = data || [];
+  }
+
+  const sel = document.getElementById('res-course-filter');
+  sel.innerHTML = '<option value="">Todos los cursos</option>'
+    + state.courses.map(c =>
+        `<option value="${c.id}">${escHtml(c.name)}${c.section ? ' - ' + escHtml(c.section) : ''}</option>`
+      ).join('');
+
+  loadResults();
+}
+
+async function onResultsCourseChange() {
+  state.resultsCourseId = document.getElementById('res-course-filter').value || null;
+
+  // Refresh student dropdown
+  const stuSel = document.getElementById('res-student-filter');
+  stuSel.innerHTML = '<option value="">Todos los estudiantes</option>';
+
+  if (state.resultsCourseId) {
+    const { data: students } = await sb
+      .from('students')
+      .select('id, full_name')
+      .eq('course_id', state.resultsCourseId)
+      .order('full_name');
+
+    if (students && students.length) {
+      stuSel.innerHTML += students.map(s =>
+        `<option value="${s.id}">${escHtml(s.full_name)}</option>`
+      ).join('');
+    }
+  }
+
+  loadResults();
+}
+
+async function loadResults() {
+  const tbody     = document.getElementById('tbody-results');
+  const courseId  = document.getElementById('res-course-filter').value  || null;
+  const studentId = document.getElementById('res-student-filter').value || null;
+  const status    = document.getElementById('res-status-filter').value  || null;
+
+  tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">Cargando...</td></tr>`;
+  state.expandedSessionIds.clear();
+
+  try {
+    // Get course IDs to query
+    let courseIds = [];
+    if (courseId) {
+      courseIds = [courseId];
+    } else {
+      if (!state.courses.length) {
+        const { data } = await sb.from('courses').select('id').eq('professor_id', state.user.id);
+        state.courses = data || [];
+      }
+      courseIds = state.courses.map(c => c.id);
+    }
+
+    if (!courseIds.length) {
+      tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">📋</div><p>No hay cursos creados todavía.</p></div></td></tr>`;
+      updateResultsSummary([]);
+      return;
+    }
+
+    let query = sb
+      .from('sessions')
+      .select('id, status, total_score, scenarios_completed, total_wrong_attempts, started_at, completed_at, students(id, full_name, cedula), courses(id, name, section)')
+      .in('course_id', courseIds)
+      .order('started_at', { ascending: false })
+      .limit(200);
+
+    if (studentId) query = query.eq('student_id', studentId);
+    if (status)    query = query.eq('status', status);
+
+    const { data: sessions, error } = await query;
+    if (error) throw error;
+
+    updateResultsSummary(sessions || []);
+
+    if (!sessions || !sessions.length) {
+      tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">📭</div><p>No hay sesiones que coincidan con los filtros.</p></div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = sessions.map((s, idx) => {
+      const studentName = s.students ? escHtml(s.students.full_name) : '<em style="color:var(--muted)">Anónimo</em>';
+      const courseName  = s.courses  ? escHtml(s.courses.name + (s.courses.section ? ' §' + s.courses.section : '')) : '—';
+      const score       = s.total_score != null ? parseFloat(s.total_score) : null;
+      const scoreHtml   = score != null
+        ? `<span style="color:${scoreColor(score)};font-weight:700">${score.toFixed(1)}</span>`
+        : '<span style="color:var(--muted)">—</span>';
+
+      return `<tr class="expandable-row" onclick="toggleResultDetail('${s.id}', this)" id="row-${s.id}">
+          <td style="color:var(--muted);font-size:12px">▶</td>
+          <td>${studentName}</td>
+          <td style="color:var(--muted);font-size:12px">${courseName}</td>
+          <td>${scoreHtml}</td>
+          <td>${s.scenarios_completed || 0}/5</td>
+          <td>${s.total_wrong_attempts || 0}</td>
+          <td>${statusBadge(s.status)}</td>
+          <td style="color:var(--muted);white-space:nowrap;font-size:12px">${formatDate(s.started_at)}</td>
+          <td style="color:var(--muted);white-space:nowrap;font-size:12px">${s.completed_at ? formatDate(s.completed_at) : '—'}</td>
+        </tr>
+        <tr class="detail-row hidden" id="detail-${s.id}">
+          <td colspan="9">
+            <div class="detail-inner" id="detail-inner-${s.id}">
+              <span style="font-size:12px;color:var(--muted)">Cargando detalle...</span>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:var(--red);padding:1rem">Error: ${escHtml(err.message)}</td></tr>`;
+    showToast('Error al cargar resultados: ' + err.message, 'err');
+  }
+}
+
+async function toggleResultDetail(sessionId, rowEl) {
+  const detailRow   = document.getElementById('detail-' + sessionId);
+  const detailInner = document.getElementById('detail-inner-' + sessionId);
+  const arrow       = rowEl.querySelector('td:first-child');
+
+  if (state.expandedSessionIds.has(sessionId)) {
+    detailRow.classList.add('hidden');
+    state.expandedSessionIds.delete(sessionId);
+    if (arrow) arrow.textContent = '▶';
+  } else {
+    detailRow.classList.remove('hidden');
+    state.expandedSessionIds.add(sessionId);
+    if (arrow) arrow.textContent = '▼';
+
+    // Load scenario breakdown
+    detailInner.innerHTML = '<span style="font-size:12px;color:var(--muted)">Cargando detalle de escenarios...</span>';
+
+    try {
+      const { data: scenarios, error } = await sb
+        .from('scenario_results')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('scenario_id');
+
+      if (error) throw error;
+
+      if (!scenarios || !scenarios.length) {
+        detailInner.innerHTML = '<span style="font-size:12px;color:var(--muted)">No hay datos de escenarios registrados para esta sesión.</span>';
+        return;
+      }
+
+      detailInner.innerHTML = `
+        <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:.5rem">Detalle por escenario</div>
+        <div class="tbl-wrap">
+          <table class="dtable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Escenario</th>
+                <th>Completado</th>
+                <th>Etapas</th>
+                <th>Intentos errados</th>
+                <th>Tiempo</th>
+                <th>Fin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${scenarios.map(sc => `<tr>
+                <td>${sc.scenario_id}</td>
+                <td>${escHtml(sc.scenario_name)}</td>
+                <td>${sc.completed ? '<span class="badge badge-green">Sí</span>' : '<span class="badge badge-muted">No</span>'}</td>
+                <td>${sc.stages_completed}/${sc.stages_total}</td>
+                <td style="color:${sc.wrong_attempts > 3 ? 'var(--red)' : sc.wrong_attempts > 1 ? 'var(--amber)' : 'var(--text)'}">${sc.wrong_attempts}</td>
+                <td>${sc.time_spent_seconds ? formatSeconds(sc.time_spent_seconds) : '—'}</td>
+                <td style="color:var(--muted)">${sc.completed_at ? formatDate(sc.completed_at) : '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+    } catch (err) {
+      detailInner.innerHTML = `<span style="font-size:12px;color:var(--red)">Error al cargar: ${escHtml(err.message)}</span>`;
+    }
+  }
+}
+
+function updateResultsSummary(sessions) {
+  document.getElementById('res-total').textContent = sessions.length;
+
+  const completed = sessions.filter(s => s.status === 'completed');
+
+  if (completed.length) {
+    const avg = completed.reduce((acc, s) => acc + (parseFloat(s.total_score) || 0), 0) / completed.length;
+    document.getElementById('res-avg-score').textContent = avg.toFixed(1);
+    document.getElementById('res-avg-score').style.color = scoreColor(avg);
+  } else {
+    document.getElementById('res-avg-score').textContent = '—';
+    document.getElementById('res-avg-score').style.color = 'var(--muted)';
+  }
+
+  const completionRate = sessions.length
+    ? Math.round(completed.length / sessions.length * 100) + '%'
+    : '—';
+  document.getElementById('res-completion').textContent = completionRate;
+
+  // Hardest scenario: find the most-attempted across all sessions
+  // We do not have scenario_results aggregated here, so we approximate from total_wrong_attempts
+  document.getElementById('res-hardest').textContent = '—';
+}
+
+// ── UTILITY FUNCTIONS ──────────────────────────────────────────
+function scoreColor(score) {
+  const n = parseFloat(score);
+  if (n >= 80) return 'var(--green)';
+  if (n >= 60) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function statusBadge(status) {
+  const map = {
+    completed:   ['badge-green',  'Completada'],
+    in_progress: ['badge-blue',   'En progreso'],
+    abandoned:   ['badge-muted',  'Abandonada']
+  };
+  const [cls, label] = map[status] || ['badge-muted', status || '—'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function formatDate(ts) {
+  if (!ts) return '—';
+  try {
+    return new Date(ts).toLocaleString('es-VE', {
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
+  } catch { return ts; }
+}
+
+function formatSeconds(s) {
+  if (!s || s <= 0) return '—';
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+function escHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+let toastTimer = null;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'toast ' + (type === 'ok' ? 'ok' : 'err') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 3800);
+}
+</script>
+</body>
+</html>
